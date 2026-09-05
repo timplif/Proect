@@ -1,0 +1,19 @@
+.env
+venv/
+__pycache__/
+*.pyc
+node_modules/
+.vscode/
+.idea/
+Thumbs.db
+backend/venv/
+
+# Игнорировать основной файл базы данных
+*.sqlite3
+*.sqlite
+*.db
+
+# Игнорировать вспомогательные файлы SQLite (журналы, WAL, SHM)
+*.sqlite3-journal
+*.sqlite3-wal
+*.sqlite3-shm

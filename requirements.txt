@@ -1,3 +1,9 @@
 flask
 python-dotenv
 requests
+fastapi==0.104.1
+uvicorn==0.24.0
+python-dotenv==1.0.0
+openai==1.6.1
+pydantic==1.10.13
+tortoise-orm==0.19.3

@@ -1,13 +1,14 @@
 from datetime import datetime
 import sqlite3
 from flask import Flask, render_template, request, redirect, url_for, session, flash, jsonify
-from database import (
+# Вместо from database import (...)
+from backend import (
     init_db, check_nickname, check_password,
     create_user, verify_user, get_user_by_id,
     create_group, join_group, get_user_groups,
     add_expense, delete_expense, get_expenses,
     get_group_stats, get_personal_total, get_categories,
-    init_debts_table, get_group_debts
+    init_debts_table, get_group_debts, get_group_members_for_select
 )
 from ai_service import ask_ai, categorize_expense, analyze_group_expenses, generate_debt_reminder
 
