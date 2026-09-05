@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Чат с AI-ассистентом</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>💬 Чат с AI-ассистентом</h1>
+            <div class="user-actions">
+                <a href="/" class="home-btn">🏠 Главная</a>
+                <a href="/ai-analytics" class="analytics-btn">📊 AI-аналитика</a>
+                <a href="/reminders" class="reminders-btn">💰 Напоминания</a>
+                <a href="{{ url_for('logout') }}" class="logout-btn">Выйти</a>
+            </div>
+        </div>
+
+        <div class="chat-container">
+            <div class="chat-messages" id="chat-messages">
+                <div class="message ai-message">
+                    <div class="message-avatar">🤖</div>
+                    <div class="message-content">
+                        Привет! Я AI-ассистент. Спрашивай о финансах, бюджете, экономии — помогу разобраться!
+                    </div>
+                </div>
+            </div>
+
+            <div class="chat-input-container">
+                <input type="text" id="chat-input" placeholder="Задай вопрос о финансах..." class="chat-input">
+                <button onclick="sendMessage()" class="send-btn">Отправить</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const chatMessages = document.getElementById('chat-messages');
+        const chatInput = document.getElementById('chat-input');
+
+        function sendMessage() {
+            const question = chatInput.value.trim();
+            if (!question) return;
+
+            addMessage(question, 'user');
+            chatInput.value = '';
+
+            const loadingId = addMessage('Думаю...', 'ai', true);
+
+            fetch('/api/ai/ask', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ question: question })
+            })
+            .then(response => response.json())
+            .then(data => {
+                removeMessage(loadingId);
+                if (data.success) {
+                    addMessage(data.answer, 'ai');
+                } else {
+                    addMessage('Ошибка: ' + data.error, 'ai');
+                }
+            })
+            .catch(error => {
+                removeMessage(loadingId);
+                addMessage('Ошибка соединения: ' + error.message, 'ai');
+            });
+        }
+
+        function addMessage(text, type, isLoading = false) {
+            const messageDiv = document.createElement('div');
+            const id = 'msg-' + Date.now();
+            messageDiv.id = id;
+            messageDiv.className = `message ${type}-message`;
+            
+            const avatar = type === 'user' ? '👤' : '';
+            messageDiv.innerHTML = `
+                <div class="message-avatar">${avatar}</div>
+                <div class="message-content">${isLoading ? '<span class="loading">Думаю...</span>' : text}</div>
+            `;
+            
+            chatMessages.appendChild(messageDiv);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+            return id;
+        }
+
+        function removeMessage(id) {
+            const msg = document.getElementById(id);
+            if (msg) msg.remove();
+        }
+
+        chatInput.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') sendMessage();
+        });
+    </script>
+</body>
+</html>

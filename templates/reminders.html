@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Напоминания о долгах</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>💰 Умные напоминания о долгах</h1>
+            <div class="user-actions">
+                <a href="/" class="home-btn">🏠 Главная</a>
+                <a href="/chat" class="chat-btn">💬 Чат с AI</a>
+                <a href="/ai-analytics" class="analytics-btn"> AI-аналитика</a>
+                <a href="{{ url_for('logout') }}" class="logout-btn">Выйти</a>
+            </div>
+        </div>
+
+        <div class="reminders-container">
+            <div class="stats">
+                <h3>Выбери группу</h3>
+                <div class="group-selector">
+                    <label>Группа:</label>
+                    <select id="group-select" onchange="loadDebts()">
+                        <option value="personal">Личные расходы</option>
+                        {% for g in groups %}
+                            <option value="{{ g.id }}">{{ g.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <button onclick="generateReminders()" class="reminders-generate-btn">🤖 Сгенерировать напоминания</button>
+            </div>
+
+            <div id="debts-list" class="debts-list" style="display: none;">
+                <h3>Список долгов</h3>
+                <div id="debts-content"></div>
+            </div>
+
+            <div id="reminders-result" class="reminders-result" style="display: none;">
+                <h3>Сгенерированные напоминания</h3>
+                <div id="reminders-content"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentDebts = [];
+
+        function loadDebts() {
+            const groupId = document.getElementById('group-select').value;
+            const debtsList = document.getElementById('debts-list');
+            const debtsContent = document.getElementById('debts-content');
+
+            if (groupId === 'personal') {
+                debtsList.style.display = 'none';
+                currentDebts = [];
+                return;
+            }
+
+            fetch(`/api/debts?group=${groupId}`)
+                .then(response => response.json())
+                .then(debts => {
+                    currentDebts = debts;
+                    if (debts.length === 0) {
+                        debtsContent.innerHTML = '<p class="empty">Долгов нет</p>';
+                    } else {
+                        let html = '<table><thead><tr><th>Кто должен</th><th>Кому</th><th>Сумма</th><th>Описание</th></tr></thead><tbody>';
+                        debts.forEach(debt => {
+                            html += `<tr>
+                                <td>${debt.debtor_name}</td>
+                                <td>${debt.creditor_name}</td>
+                                <td>${debt.amount} ₽</td>
+                                <td>${debt.description}</td>
+                            </tr>`;
+                        });
+                        html += '</tbody></table>';
+                        debtsContent.innerHTML = html;
+                    }
+                    debtsList.style.display = 'block';
+                })
+                .catch(error => {
+                    debtsContent.innerHTML = `<p class="flash-error">Ошибка: ${error.message}</p>`;
+                    debtsList.style.display = 'block';
+                });
+        }
+
+        function generateReminders() {
+            const remindersResult = document.getElementById('reminders-result');
+            const remindersContent = document.getElementById('reminders-content');
+
+            if (currentDebts.length === 0) {
+                remindersContent.innerHTML = '<p class="empty">Нет долгов для напоминаний</p>';
+                remindersResult.style.display = 'block';
+                return;
+            }
+
+            remindersResult.style.display = 'block';
+            remindersContent.innerHTML = '<p class="loading">Генерирую напоминания...</p>';
+
+            fetch('/api/ai/reminders', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ debts: currentDebts })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) {
+                    remindersContent.innerHTML = `<p class="flash-error">Ошибка: ${data.error}</p>`;
+                    return;
+                }
+
+                let html = '';
+                data.reminders.forEach(reminder => {
+                    html += `
+                        <div class="reminder-card">
+                            <h4>${reminder.debtor_name} → ${reminder.creditor_name}: ${reminder.amount} ₽</h4>
+                            <p class="reminder-text">${reminder.reminder}</p>
+                            <small>За: ${reminder.description}</small>
+                        </div>
+                    `;
+                });
+                remindersContent.innerHTML = html;
+            })
+            .catch(error => {
+                remindersContent.innerHTML = `<p class="flash-error">Ошибка: ${error.message}</p>`;
+            });
+        }
+    </script>
+</body>
+</html>

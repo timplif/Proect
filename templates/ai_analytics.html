@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI-аналитика расходов</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📊 AI-аналитика расходов</h1>
+            <div class="user-actions">
+                <a href="/" class="home-btn">🏠 Главная</a>
+                <a href="/chat" class="chat-btn">💬 Чат с AI</a>
+                <a href="/reminders" class="reminders-btn">💰 Напоминания</a>
+                <a href="{{ url_for('logout') }}" class="logout-btn">Выйти</a>
+            </div>
+        </div>
+
+        <div class="analytics-container">
+            <div class="stats">
+                <h3>Выбери группу для анализа</h3>
+                <div class="group-selector">
+                    <label>Группа:</label>
+                    <select id="group-select" onchange="loadExpenses()">
+                        <option value="personal">Личные расходы</option>
+                    </select>
+                </div>
+                <button onclick="analyzeExpenses()" class="analyze-btn">🔍 Получить AI-анализ</button>
+            </div>
+
+            <div id="analysis-result" class="analysis-result" style="display: none;">
+                <h3>Результат анализа</h3>
+                <div id="analysis-content"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function loadExpenses() {
+            const groupId = document.getElementById('group-select').value;
+        }
+
+        function analyzeExpenses() {
+            const groupId = document.getElementById('group-select').value;
+            const resultDiv = document.getElementById('analysis-result');
+            const contentDiv = document.getElementById('analysis-content');
+            
+            resultDiv.style.display = 'block';
+            contentDiv.innerHTML = '<p class="loading">Анализирую данные...</p>';
+
+            fetch(`/api/expenses?group=${groupId}`)
+                .then(response => response.json())
+                .then(expenses => {
+                    if (expenses.length === 0) {
+                        contentDiv.innerHTML = '<p class="empty">Нет расходов для анализа</p>';
+                        return;
+                    }
+
+                    return fetch('/api/ai/analyze', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ expenses: expenses })
+                    });
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.error) {
+                        contentDiv.innerHTML = `<p class="flash-error">Ошибка: ${data.error}</p>`;
+                        return;
+                    }
+
+                    let html = `
+                        <div class="analysis-card">
+                            <h4>💰 Общая сумма: ${data.total || 0} ₽</h4>
+                            <p>Средний расход на человека: ${data.per_person || 0} ₽</p>
+                        </div>
+                    `;
+
+                    if (data.top_categories && data.top_categories.length > 0) {
+                        html += '<h4>📊 Топ категорий:</h4><ul>';
+                        data.top_categories.forEach(cat => {
+                            html += `<li>${cat.category}: ${cat.total} ₽</li>`;
+                        });
+                        html += '</ul>';
+                    }
+
+                    if (data.advice && data.advice.length > 0) {
+                        html += '<h4>💡 Советы:</h4><ul>';
+                        data.advice.forEach(tip => {
+                            html += `<li>${tip}</li>`;
+                        });
+                        html += '</ul>';
+                    }
+
+                    if (data.potential_savings) {
+                        html += `<div class="savings-card">
+                            <h4> Потенциальная экономия: ${data.potential_savings} ₽</h4>
+                        </div>`;
+                    }
+
+                    contentDiv.innerHTML = html;
+                })
+                .catch(error => {
+                    contentDiv.innerHTML = `<p class="flash-error">Ошибка: ${error.message}</p>`;
+                });
+        }
+    </script>
+</body>
+</html>

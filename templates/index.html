@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Мои расходы</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Привет, {{ user.real_name }}!</h1>
+            <div class="user-actions">
+                <button type="button" onclick="showModal('create-group-modal')">Создать группу</button>
+                <button type="button" onclick="showModal('join-group-modal')">Присоединиться</button>
+                {% if current_group_id != 'personal' %}
+                    <button type="button" onclick="showModal('add-debt-modal')">Добавить долг</button>
+                {% endif %}
+                <a href="/chat" class="chat-btn">💬 Чат с AI</a>
+                <a href="/ai-analytics" class="analytics-btn">📊 AI-аналитика</a>
+                <a href="/reminders" class="reminders-btn">💰 Напоминания</a>
+                <a href="{{ url_for('logout') }}" class="logout-btn">Выйти</a>
+            </div>
+        </div>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% for category, message in messages %}
+                <p class="flash-{{ category }}">{{ message }}</p>
+            {% endfor %}
+        {% endwith %}
+
+        <div class="group-selector">
+            <label>Текущая группа:</label>
+            <select onchange="switchGroup(this.value)">
+                <option value="personal" {% if current_group_id == 'personal' %}selected{% endif %}>Личные расходы</option>
+                {% for g in groups %}
+                    <option value="{{ g.id }}" {% if current_group_id == g.id|string %}selected{% endif %}>{{ g.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        {% if current_group_id != 'personal' and current_group_code %}
+        <div class="group-code">
+            <strong>Код группы:</strong>
+            <span class="code-value" id="group-code">{{ current_group_code }}</span>
+            <button type="button" onclick="copyCode()" class="copy-btn">Копировать</button>
+        </div>
+        {% endif %}
+
+        <div class="total">
+            Итого за {{ current_month }}: <strong>{{ "%.2f"|format(total) }} ₽</strong>
+            {% if current_group_id != 'personal' %}
+                <span class="group-name">({{ current_group_name }})</span>
+            {% endif %}
+        </div>
+
+        {% if group_stats and group_stats.users %}
+        <div class="stats">
+            <h3>Статистика группы</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Участник</th>
+                        <th>Расход</th>
+                        <th>Процент</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for u in group_stats.users %}
+                    <tr>
+                        <td>{{ u.user_name }}{% if u.user_name == user.real_name %} (вы){% endif %}</td>
+                        <td>{{ "%.2f"|format(u.total) }} ₽</td>
+                        <td>{{ "%.1f"|format(u.percentage) }}%</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% endif %}
+
+        <form method="GET" class="filters">
+            <label>Месяц:
+                <input type="month" name="month" value="{{ current_month }}">
+            </label>
+            <label>Категория:
+                <select name="category">
+                    <option value="">Все</option>
+                    {% for c in categories %}
+                        <option value="{{ c }}" {% if c == category_filter %}selected{% endif %}>{{ c }}</option>
+                    {% endfor %}
+                </select>
+            </label>
+            <input type="hidden" name="group" value="{{ current_group_id }}">
+            <button type="submit">Показать</button>
+        </form>
+
+        <form method="POST" action="{{ url_for('add') }}" class="add-form">
+            <h3>Добавить расход</h3>
+            <input type="hidden" name="group_id" value="{{ current_group_id }}">
+            <div class="row">
+                <input type="number" name="amount" step="0.01" min="0" placeholder="Сумма" required>
+                <input type="date" name="date" value="{{ today }}">
+            </div>
+            <div class="row">
+                <select name="category" id="category-select" onchange="toggleCustom()">
+                    {% for c in default_categories %}
+                        <option value="{{ c }}">{{ c }}</option>
+                    {% endfor %}
+                    <option value="__custom__">Своя категория...</option>
+                </select>
+                <input type="text" name="custom_category" id="custom-category" placeholder="Название категории" style="display:none">
+            </div>
+            <input type="text" name="description" id="expense-description" placeholder="Описание (необязательно)" style="width: 100%; margin-bottom: 10px;">
+            <div style="margin-bottom: 10px;">
+                <button type="button" onclick="autoCategorize()" class="auto-btn">🤖 Авто</button>
+                <small style="color: #888; margin-left: 10px;">Нажмите "Авто" для автоматического определения категории</small>
+            </div>
+            <button type="submit">Добавить</button>
+        </form>
+
+        <h3>Список расходов</h3>
+        {% if expenses %}
+            <table>
+                <thead>
+                    <tr>
+                        <th>Дата</th>
+                        {% if current_group_id != 'personal' %}<th>Кто</th>{% endif %}
+                        <th>Категория</th>
+                        <th>Описание</th>
+                        <th>Сумма</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for e in expenses %}
+                    <tr>
+                        <td>{{ e.date }}</td>
+                        {% if current_group_id != 'personal' %}<td>{{ e.user_name }}</td>{% endif %}
+                        <td>{{ e.category }}</td>
+                        <td>{{ e.description or '' }}</td>
+                        <td>{{ "%.2f"|format(e.amount) }} ₽</td>
+                        <td>
+                            <form method="POST" action="{{ url_for('delete', expense_id=e.id) }}" style="display:inline">
+                                <input type="hidden" name="group_id" value="{{ current_group_id }}">
+                                <button type="submit" class="delete-btn" title="Удалить">×</button>
+                            </form>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% else %}
+            <p class="empty">Расходов нет.</p>
+        {% endif %}
+
+        {# ===== СЕКЦИЯ ДОЛГОВ ===== #}
+        {% if current_group_id != 'personal' %}
+        <div class="debts-header">
+            <h3>Долги в группе</h3>
+            <button type="button" onclick="showModal('add-debt-modal')" class="add-debt-btn">Добавить долг</button>
+        </div>
+
+        {% if debts %}
+            <table>
+                <thead>
+                    <tr>
+                        <th>Кто должен</th>
+                        <th>Кому должен</th>
+                        <th>Сумма</th>
+                        <th>Описание</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for debt in debts %}
+                    <tr>
+                        <td>{{ debt.debtor_name }}{% if debt.debtor_name == user.real_name %} (вы){% endif %}</td>
+                        <td>{{ debt.creditor_name }}{% if debt.creditor_name == user.real_name %} (вы){% endif %}</td>
+                        <td>{{ "%.2f"|format(debt.amount) }} ₽</td>
+                        <td>{{ debt.description or '' }}</td>
+                        <td>
+                            <form method="POST" action="{{ url_for('delete_debt_route', debt_id=debt.id) }}" style="display:inline">
+                                <input type="hidden" name="group_id" value="{{ current_group_id }}">
+                                <button type="submit" class="delete-btn" title="Выплатить долг">×</button>
+                            </form>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% else %}
+            <p class="empty">Долгов пока нет.</p>
+        {% endif %}
+        {% endif %}
+    </div>
+
+    {# ===== МОДАЛКИ ===== #}
+    <div id="create-group-modal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="hideModal('create-group-modal')">&times;</span>
+            <h2>Создать группу</h2>
+            <form method="POST" action="{{ url_for('create_group_route') }}">
+                <input type="text" name="group_name" placeholder="Название группы" required>
+                <button type="submit">Создать</button>
+            </form>
+        </div>
+    </div>
+
+    <div id="join-group-modal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="hideModal('join-group-modal')">&times;</span>
+            <h2>Присоединиться к группе</h2>
+            <form method="POST" action="{{ url_for('join_group_route') }}">
+                <input type="text" name="code" placeholder="Код группы (6 символов)" maxlength="6" required style="text-transform: uppercase;">
+                <button type="submit">Присоединиться</button>
+            </form>
+        </div>
+    </div>
+
+    <div id="add-debt-modal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="hideModal('add-debt-modal')">&times;</span>
+            <h2>Добавить долг</h2>
+            <form method="POST" action="{{ url_for('add_debt_route') }}">
+                <input type="hidden" name="group_id" value="{{ current_group_id }}">
+
+                <label style="text-align: left; font-weight: 500;">Кто должен:</label>
+                <select name="debtor_id" required>
+                    {% for member in group_members %}
+                        <option value="{{ member.id }}" {% if member.real_name == user.real_name %}selected{% endif %}>{{ member.real_name }}</option>
+                    {% endfor %}
+                </select>
+
+                <label style="text-align: left; font-weight: 500;">Кому должен:</label>
+                <select name="creditor_id" required>
+                    {% for member in group_members %}
+                        <option value="{{ member.id }}" {% if member.real_name == user.real_name %}selected{% endif %}>{{ member.real_name }}</option>
+                    {% endfor %}
+                </select>
+
+                <input type="number" name="amount" step="0.01" min="0.01" placeholder="Сумма" required>
+                <input type="text" name="description" placeholder="Описание (необязательно)">
+
+                <button type="submit">Добавить</button>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        function toggleCustom() {
+            const sel = document.getElementById('category-select');
+            const inp = document.getElementById('custom-category');
+            inp.style.display = sel.value === '__custom__' ? 'block' : 'none';
+            if (sel.value !== '__custom__') inp.value = '';
+        }
+
+        function switchGroup(groupId) {
+            const url = new URL(window.location);
+            url.searchParams.set('group', groupId);
+            window.location = url;
+        }
+
+        function showModal(id) { document.getElementById(id).style.display = 'flex'; }
+        function hideModal(id) { document.getElementById(id).style.display = 'none'; }
+
+        function copyCode() {
+            const code = document.getElementById('group-code').textContent;
+            navigator.clipboard.writeText(code).then(() => {
+                alert('Код скопирован: ' + code);
+            }).catch(() => alert('Не удалось скопировать'));
+        }
+
+        async function autoCategorize() {
+            const description = document.getElementById('expense-description').value;
+            if (!description) {
+                alert('Сначала введите описание расхода');
+                return;
+            }
+            try {
+                const response = await fetch('/api/ai/categorize', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({description: description})
+                });
+                const data = await response.json();
+                if (data.success) {
+                    const sel = document.getElementById('category-select');
+                    let found = false;
+                    for (let option of sel.options) {
+                        if (option.value === data.category) {
+                            sel.value = data.category;
+                            found = true;
+                            break;
+                        }
+                    }
+                    if (!found) {
+                        document.getElementById('custom-category').value = data.category;
+                        sel.value = '__custom__';
+                        document.getElementById('custom-category').style.display = 'block';
+                    }
+                } else {
+                    alert('Не удалось определить категорию');
+                }
+            } catch (e) {
+                alert('Ошибка: ' + e.message);
+            }
+        }
+
+        window.onclick = function(event) {
+            if (event.target.classList.contains('modal')) event.target.style.display = 'none';
+        }
+    </script>
+</body>
+</html>

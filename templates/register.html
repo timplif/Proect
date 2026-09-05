@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Регистрация</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="login-box">
+        <h1>Регистрация</h1>
+        <p>Создайте новый аккаунт</p>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% for category, message in messages %}
+                <p class="flash-{{ category }}">{{ message }}</p>
+            {% endfor %}
+        {% endwith %}
+
+        <form method="POST">
+            <input type="text" name="nickname" placeholder="Никнейм (латиница)" required value="{{ nickname or '' }}">
+            <input type="text" name="real_name" placeholder="Ваше имя" required value="{{ real_name or '' }}">
+            <input type="password" name="password" placeholder="Пароль (мин. 8 символов)" required>
+            <small class="hint">Пароль должен содержать: заглавную букву, цифру и спецсимвол</small>
+            <button type="submit">Зарегистрироваться</button>
+        </form>
+
+        <p class="switch-link">Уже есть аккаунт? <a href="{{ url_for('login') }}">Войти</a></p>
+    </div>
+</body>
+</html>
