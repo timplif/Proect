@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI-аналитика — Новые Лица</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <style>
+        .analytics-container { max-width: 900px; margin: 0 auto; padding: 100px 20px 20px; }
+        .analytics-title { font-size: 28px; font-weight: 700; margin-bottom: 10px; background: linear-gradient(135deg, #fff, #a78bfa); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .analytics-subtitle { color: rgba(255, 255, 255, 0.5); font-size: 14px; margin-bottom: 30px; }
+        .analytics-controls { background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 16px; padding: 20px; margin-bottom: 24px; }
+        .control-row { display: flex; gap: 16px; align-items: flex-end; flex-wrap: wrap; }
+        .control-group { flex: 1; min-width: 200px; }
+        .control-group label { display: block; margin-bottom: 8px; font-size: 12px; font-weight: 600; color: rgba(255, 255, 255, 0.6); text-transform: uppercase; letter-spacing: 0.5px; }
+        .control-group select { width: 100%; padding: 12px 16px; background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 12px; color: #fff; font-size: 14px; outline: none; }
+        .control-group select option { background: #1a1a2e; color: #fff; }
+        .analyze-btn { padding: 12px 32px; background: linear-gradient(135deg, #8b5cf6, #06b6d4); border: none; border-radius: 12px; color: #fff; font-weight: 600; font-size: 14px; cursor: pointer; height: 44px; }
+        .analyze-btn:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(139, 92, 246, 0.4); }
+        .analytics-loading { text-align: center; padding: 60px 20px; color: rgba(255, 255, 255, 0.5); }
+        .spinner { width: 40px; height: 40px; border: 3px solid rgba(139, 92, 246, 0.2); border-top-color: #8b5cf6; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 16px; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .analytics-results { display: none; }
+        .analytics-results.active { display: block; }
+        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 24px; }
+        .stat-card { background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 16px; padding: 20px; text-align: center; }
+        .stat-label { font-size: 12px; color: rgba(255, 255, 255, 0.5); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; }
+        .stat-value { font-size: 28px; font-weight: 700; background: linear-gradient(135deg, #a78bfa, #06b6d4); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .categories-section, .advice-section { background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 16px; padding: 24px; margin-bottom: 20px; }
+        .section-title { font-size: 16px; font-weight: 600; margin-bottom: 16px; color: rgba(255, 255, 255, 0.9); }
+        .categories-list { display: flex; flex-wrap: wrap; gap: 10px; }
+        .category-tag { background: rgba(139, 92, 246, 0.15); border: 1px solid rgba(139, 92, 246, 0.3); border-radius: 20px; padding: 8px 16px; font-size: 13px; color: rgba(255, 255, 255, 0.9); }
+        .category-tag strong { color: #a78bfa; margin-left: 6px; }
+        .advice-list { list-style: none; padding: 0; margin: 0; }
+        .advice-list li { padding: 12px 0; border-bottom: 1px solid rgba(255, 255, 255, 0.06); color: rgba(255, 255, 255, 0.8); font-size: 14px; line-height: 1.5; display: flex; gap: 12px; }
+        .advice-list li::before { content: "✦"; color: #8b5cf6; font-weight: bold; }
+        .advice-list li:last-child { border-bottom: none; }
+        .back-btn { display: inline-flex; align-items: center; gap: 8px; padding: 10px 20px; background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 10px; color: rgba(255, 255, 255, 0.8); text-decoration: none; font-size: 14px; margin-bottom: 20px; }
+        .back-btn:hover { background: rgba(255, 255, 255, 0.1); color: #fff; }
+    </style>
+</head>
+<body>
+    <div class="analytics-container">
+        <a href="/" class="back-btn">← На главную</a>
+        <h1 class="analytics-title"> AI-аналитика расходов</h1>
+        <p class="analytics-subtitle">Получите персональные рекомендации по оптимизации бюджета</p>
+
+        <div class="analytics-controls">
+            <div class="control-row">
+                <div class="control-group">
+                    <label>Выберите группу</label>
+                    <select id="groupSelect">
+                        <option value="personal">Личные расходы</option>
+                        {% for g in groups %}
+                            <option value="{{ g.id }}">{{ g.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <button class="analyze-btn" id="analyzeBtn" onclick="runAnalysis()">🔍 Получить AI-анализ</button>
+            </div>
+        </div>
+
+        <div class="analytics-loading" id="loadingState" style="display: none;">
+            <div class="spinner"></div>
+            <p>AI анализирует ваши расходы...</p>
+            <p style="font-size: 12px; margin-top: 8px;">Это может занять до 30 секунд</p>
+        </div>
+
+        <div class="analytics-results" id="resultsContainer">
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-label">Общие расходы</div>
+                    <div class="stat-value" id="statTotal">0 ₽</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">На человека</div>
+                    <div class="stat-value" id="statPerPerson">0 ₽</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Возможная экономия</div>
+                    <div class="stat-value" id="statSavings">0 ₽</div>
+                </div>
+            </div>
+
+            <div class="categories-section">
+                <h3 class="section-title">🏷️ Топ категорий расходов</h3>
+                <div class="categories-list" id="categoriesList"></div>
+            </div>
+
+            <div class="advice-section">
+                <h3 class="section-title">💡 Рекомендации AI</h3>
+                <ul class="advice-list" id="adviceList"></ul>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        async function runAnalysis() {
+            const group = document.getElementById('groupSelect').value;
+            const btn = document.getElementById('analyzeBtn');
+            const loading = document.getElementById('loadingState');
+            const results = document.getElementById('resultsContainer');
+            btn.disabled = true;
+            btn.textContent = 'Анализирую...';
+            loading.style.display = 'block';
+            results.classList.remove('active');
+            try {
+                const expRes = await fetch(`/api/expenses?group=${group}`);
+                const expenses = await expRes.json();
+                if (expenses.length === 0) { alert('В этой группе нет расходов для анализа'); return; }
+                const aiRes = await fetch('/api/ai/analyze', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ expenses: expenses })
+                });
+                const data = await aiRes.json();
+                if (data.error) throw new Error(data.error);
+                document.getElementById('statTotal').textContent = (data.total || 0).toLocaleString() + ' ₽';
+                document.getElementById('statPerPerson').textContent = (data.per_person || 0).toLocaleString() + ' ₽';
+                document.getElementById('statSavings').textContent = (data.potential_savings || 0).toLocaleString() + ' ₽';
+                const catList = document.getElementById('categoriesList');
+                catList.innerHTML = '';
+                if (data.top_categories && data.top_categories.length > 0) {
+                    data.top_categories.forEach(c => {
+                        catList.innerHTML += `<div class="category-tag">${c.category}<strong>${c.total.toLocaleString()} ₽</strong></div>`;
+                    });
+                } else {
+                    catList.innerHTML = '<p style="color: rgba(255,255,255,0.5);">Нет данных</p>';
+                }
+                const adviceList = document.getElementById('adviceList');
+                adviceList.innerHTML = '';
+                if (data.advice && data.advice.length > 0) {
+                    data.advice.forEach(a => { adviceList.innerHTML += `<li>${a}</li>`; });
+                } else {
+                    adviceList.innerHTML = '<li>AI не смог сгенерировать рекомендации. Добавьте больше расходов.</li>';
+                }
+                results.classList.add('active');
+            } catch (e) { alert('Ошибка: ' + e.message); }
+            finally {
+                btn.disabled = false;
+                btn.textContent = '🔍 Получить AI-анализ';
+                loading.style.display = 'none';
+            }
+        }
+    </script>
+</body>
+</html>

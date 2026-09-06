@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Регистрация — Новые Лица</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="auth-screen">
+        <div class="auth-container">
+            <div class="auth-logo">Новые Лица</div>
+            <div class="auth-subtitle">Новый аккаунт</div>
+            <h1 class="auth-title">Регистрация</h1>
+            <p class="auth-description">Создай аккаунт и начни учёт расходов</p>
+
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% for category, message in messages %}
+                    <div class="flash-{{ category }}">{{ message }}</div>
+                {% endfor %}
+            {% endwith %}
+
+            <form class="auth-form" action="{{ url_for('register') }}" method="POST">
+                <div class="form-field">
+                    <label>Никнейм</label>
+                    <input type="text" name="nickname" value="{{ nickname or '' }}" placeholder="Например: tima" required>
+                    <div style="font-size: 11px; color: rgba(255,255,255,0.4); margin-top: 4px;">Только латинские буквы, 3-20 символов</div>
+                </div>
+                <div class="form-field">
+                    <label>Ваше имя</label>
+                    <input type="text" name="real_name" value="{{ real_name or '' }}" placeholder="Как к тебе обращаться?" required>
+                </div>
+                <div class="form-field">
+                    <label>Пароль</label>
+                    <input type="password" name="password" placeholder="Придумайте пароль" required>
+                    <div style="font-size: 11px; color: rgba(255,255,255,0.4); margin-top: 4px;">8-15 символов, заглавная буква, цифра, спецсимвол</div>
+                </div>
+                <button type="submit" class="auth-submit">Зарегистрироваться →</button>
+            </form>
+
+            <div class="auth-switch">
+                Уже есть аккаунт? <a href="{{ url_for('login') }}">Войти</a>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

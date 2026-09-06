@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Долги и Напоминания — Новые Лица</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <nav class="nav-header">
+        <div class="nav-container">
+            <div class="logo">Новые Лица</div>
+            <div class="nav-links">
+                <a href="/" class="nav-btn"> Главная</a>
+                <a href="/ai-analytics" class="nav-btn">📈 Аналитика</a>
+                <button class="notification-btn" onclick="toggleNotifications()">
+                    🔔
+                    <span class="notification-badge" id="notifBadge" style="display: none;">0</span>
+                </button>
+                <a href="{{ url_for('logout') }}" class="nav-btn logout">Выйти</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="notifications-popup" id="notificationsPopup">
+        <div class="notifications-header">
+            <h3>🔔 Уведомления</h3>
+            <button class="mark-all-read" onclick="markAllRead()">Прочитать все</button>
+        </div>
+        <div class="notifications-list" id="notificationsList">
+            <div class="notification-empty">Загрузка...</div>
+        </div>
+    </div>
+
+    <div class="main-container">
+        <h1 class="page-title">💰 Управление долгами</h1>
+
+        <div class="groups-control" style="margin-bottom: 2rem;">
+            <div class="group-selector">
+                <label> Группа:</label>
+                <select id="groupSelect" onchange="loadPageData()">
+                    <option value="personal">Личные расходы</option>
+                    {% for g in groups %}
+                        <option value="{{ g.id }}" {% if current_group_id == g.id|string %}selected{% endif %}>{{ g.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1.2fr 0.8fr; gap: 1.5rem;">
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-title">📋 Задолженности в группе</div>
+                </div>
+                <div class="debt-list" id="debtsList">
+                    <div style="text-align: center; color: var(--text-secondary); padding: 2rem;">Выберите группу</div>
+                </div>
+                <button class="add-debt-btn" onclick="openAddDebtModal()">+ Добавить долг</button>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-title"> Мои уведомления</div>
+                </div>
+                <div id="notificationsListPage">
+                    <div style="text-align: center; color: var(--text-secondary); padding: 2rem;">Загрузка...</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="addDebtModal" class="modal-overlay">
+        <div class="modal-box">
+            <button class="modal-close" onclick="closeModal('addDebtModal')">&times;</button>
+            <h2> Добавить долг</h2>
+            <form id="addDebtForm" onsubmit="addDebt(event)">
+                <div class="form-group">
+                    <label>Группа</label>
+                    <select id="debtGroupSelect" onchange="loadDebtMembers()" required>
+                        <option value="">Выберите группу</option>
+                        {% for g in groups %}
+                            <option value="{{ g.id }}">{{ g.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Кто должен</label>
+                    <select id="debtorSelect" required>
+                        <option value="">Сначала выберите группу</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Кому должен</label>
+                    <select id="creditorSelect" required>
+                        <option value="">Сначала выберите группу</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Сумма (₽)</label>
+                    <input type="number" id="debtAmount" step="0.01" min="0.01" placeholder="0.00" required>
+                </div>
+                <div class="form-group">
+                    <label>Описание</label>
+                    <input type="text" id="debtDescription" placeholder="За что долг">
+                </div>
+                <button type="submit">Добавить долг</button>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        const currentUserId = {{ user.id }};
+
+        function openModal(id) { document.getElementById(id).classList.add('active'); }
+        function closeModal(id) { document.getElementById(id).classList.remove('active'); }
+
+        function toggleNotifications() {
+            const popup = document.getElementById('notificationsPopup');
+            popup.classList.toggle('active');
+            if (popup.classList.contains('active')) loadNotifications();
+        }
+
+        async function loadNotifications() {
+            try {
+                const res = await fetch('/api/notifications');
+                const notifs = await res.json();
+                const list = document.getElementById('notificationsList');
+                const listPage = document.getElementById('notificationsListPage');
+                if (notifs.length === 0) {
+                    list.innerHTML = '<div class="notification-empty">У вас нет уведомлений</div>';
+                    if (listPage) listPage.innerHTML = '<div style="text-align: center; color: var(--text-secondary); padding: 2rem;">Уведомлений нет</div>';
+                    return;
+                }
+                const html = notifs.map(n => `
+                    <div class="notification-item ${n.is_read == 0 ? 'unread' : ''}" onclick="markRead(${n.id})">
+                        <div class="notification-header">
+                            <span>От: ${n.from_user_name || 'Система'}</span>
+                            <span>${n.amount} ₽ • ${new Date(n.created_at).toLocaleDateString()}</span>
+                        </div>
+                        <div class="notification-message">${n.message}</div>
+                    </div>
+                `).join('');
+                list.innerHTML = html;
+                if (listPage) listPage.innerHTML = html;
+            } catch (e) { console.error(e); }
+        }
+
+        async function markRead(id) {
+            await fetch(`/api/notifications/${id}/read`, { method: 'POST' });
+            loadNotifications();
+            updateNotifBadge();
+        }
+
+        async function markAllRead() {
+            await fetch('/api/notifications/read-all', { method: 'POST' });
+            loadNotifications();
+            updateNotifBadge();
+        }
+
+        async function updateNotifBadge() {
+            try {
+                const res = await fetch('/api/notifications/unread-count');
+                const data = await res.json();
+                const badge = document.getElementById('notifBadge');
+                if (data.count > 0) {
+                    badge.textContent = data.count > 9 ? '9+' : data.count;
+                    badge.style.display = 'block';
+                } else {
+                    badge.style.display = 'none';
+                }
+            } catch (e) { console.error(e); }
+        }
+
+        async function loadPageData() {
+            const group = document.getElementById('groupSelect').value;
+            if (group === 'personal') {
+                document.getElementById('debtsList').innerHTML = '<div style="text-align: center; color: var(--text-secondary); padding: 2rem;">Выберите группу для просмотра долгов</div>';
+                return;
+            }
+            await Promise.all([loadDebts(group), loadNotifications()]);
+        }
+
+        async function loadDebts(groupId) {
+            try {
+                const res = await fetch(`/api/debts?group=${groupId}`);
+                const debts = await res.json();
+                const list = document.getElementById('debtsList');
+                if (debts.length === 0) {
+                    list.innerHTML = '<div style="text-align: center; color: var(--text-secondary); padding: 2rem;">✨ Долгов нет</div>';
+                    return;
+                }
+                list.innerHTML = debts.map(d => {
+                    const isCreditor = d.creditor_id === currentUserId;
+                    const isParticipant = d.debtor_id === currentUserId || d.creditor_id === currentUserId;
+                    const remindBtn = isCreditor ? `<button class="debt-btn remind" onclick="sendRemind(${d.debtor_id}, ${d.creditor_id}, ${d.amount}, '${(d.description||'').replace(/'/g, "\\'")}')">🔔</button>` : '';
+                    const deleteBtn = isParticipant ? `<button class="debt-btn delete" onclick="deleteDebt(${d.id})">✕</button>` : '';
+                    return `
+                        <div class="debt-item">
+                            <span class="debt-name">${d.debtor_name}</span>
+                            <span class="debt-arrow">→</span>
+                            <span class="debt-name">${d.creditor_name}</span>
+                            <span class="debt-amount">${d.amount.toLocaleString()} ₽</span>
+                            <div class="debt-actions">${remindBtn}${deleteBtn}</div>
+                        </div>
+                    `;
+                }).join('');
+            } catch (e) { console.error(e); }
+        }
+
+        function openAddDebtModal() {
+            const group = document.getElementById('groupSelect').value;
+            if (group === 'personal') { alert('Выберите группу'); return; }
+            document.getElementById('debtGroupSelect').value = group;
+            loadDebtMembers();
+            openModal('addDebtModal');
+        }
+
+        async function loadDebtMembers() {
+            const groupId = document.getElementById('debtGroupSelect').value;
+            if (!groupId) return;
+            try {
+                const res = await fetch(`/api/group-members/${groupId}`);
+                const members = await res.json();
+                const debtorSelect = document.getElementById('debtorSelect');
+                const creditorSelect = document.getElementById('creditorSelect');
+                debtorSelect.innerHTML = '<option value="">Выберите</option>';
+                creditorSelect.innerHTML = '<option value="">Выберите</option>';
+                members.forEach(m => {
+                    debtorSelect.add(new Option(m.real_name, m.id));
+                    creditorSelect.add(new Option(m.real_name, m.id));
+                });
+            } catch (e) { console.error(e); }
+        }
+
+        async function addDebt(event) {
+            event.preventDefault();
+            const group_id = parseInt(document.getElementById('debtGroupSelect').value);
+            const debtor_id = parseInt(document.getElementById('debtorSelect').value);
+            const creditor_id = parseInt(document.getElementById('creditorSelect').value);
+            const amount = parseFloat(document.getElementById('debtAmount').value);
+            const description = document.getElementById('debtDescription').value;
+            if (debtor_id === creditor_id) { alert('Должник и кредитор не могут быть одним лицом'); return; }
+            try {
+                const res = await fetch('/api/add-debt', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ group_id, debtor_id, creditor_id, amount, description })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    closeModal('addDebtModal');
+                    document.getElementById('addDebtForm').reset();
+                    loadDebts(group_id);
+                } else { alert('Ошибка: ' + data.error); }
+            } catch (e) { alert('Ошибка сети'); }
+        }
+
+        async function deleteDebt(debtId) {
+            if (!confirm('Удалить этот долг?')) return;
+            try {
+                const res = await fetch(`/api/delete-debt/${debtId}`, { method: 'POST' });
+                const data = await res.json();
+                if (data.success) {
+                    const group = document.getElementById('groupSelect').value;
+                    loadDebts(group);
+                } else { alert('Ошибка: ' + data.error); }
+            } catch (e) { alert('Ошибка сети'); }
+        }
+
+        async function sendRemind(debtor_id, creditor_id, amount, description) {
+            try {
+                const res = await fetch('/api/remind', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ debtor_id, creditor_id, amount, description })
+                });
+                const data = await res.json();
+                if (data.success) alert('✅ Напоминание отправлено!\n\n' + data.message);
+                else alert('Ошибка: ' + data.error);
+            } catch (e) { alert('Ошибка сети'); }
+        }
+
+        updateNotifBadge();
+        setInterval(updateNotifBadge, 30000);
+    </script>
+</body>
+</html>
