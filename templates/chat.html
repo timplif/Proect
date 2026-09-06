@@ -6,253 +6,125 @@
     <title>Чат с AI-ассистентом</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
     <style>
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-        }
-        
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: #f5f5f5;
-            min-height: 100vh;
-        }
-        
-        .navbar {
-            background: #007bff;
-            padding: 15px 30px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        }
-        
-        .navbar a {
-            color: white;
-            text-decoration: none;
-            margin-left: 20px;
-            font-weight: 500;
-        }
-        
-        .navbar a:hover {
-            opacity: 0.8;
-        }
-        
         .chat-container {
-            max-width: 800px;
-            margin: 30px auto;
-            background: white;
-            border-radius: 12px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-            padding: 25px;
-        }
-        
-        .chat-container h2 {
-            margin-bottom: 20px;
-            color: #333;
-        }
-        
-        #messages {
-            height: 400px;
+            background: #fff;
+            border-radius: 10px;
+            padding: 20px;
+            min-height: 400px;
+            max-height: 600px;
             overflow-y: auto;
-            border: 1px solid #e0e0e0;
-            border-radius: 8px;
-            padding: 15px;
-            background: #f9f9f9;
-            margin-bottom: 15px;
+            margin-bottom: 20px;
         }
-        
         .message {
             margin-bottom: 15px;
-            display: flex;
-            animation: fadeIn 0.3s ease-in;
+            padding: 12px 16px;
+            border-radius: 10px;
+            max-width: 80%;
         }
-        
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(10px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-        
         .message.user {
-            justify-content: flex-end;
-        }
-        
-        .message.ai {
-            justify-content: flex-start;
-        }
-        
-        .message-content {
-            max-width: 75%;
-            padding: 12px 18px;
-            border-radius: 18px;
-            font-size: 15px;
-            line-height: 1.5;
-        }
-        
-        .message.user .message-content {
-            background: #007bff;
+            background: #0071e3;
             color: white;
-            border-bottom-right-radius: 4px;
+            margin-left: auto;
         }
-        
-        .message.ai .message-content {
-            background: #e9ecef;
-            color: #333;
-            border-bottom-left-radius: 4px;
+        .message.ai {
+            background: #f5f5f7;
+            color: #1d1d1f;
         }
-        
-        .message-icon {
-            font-size: 24px;
-            margin: 0 8px;
-            align-self: flex-end;
+        .message-header {
+            font-weight: bold;
+            margin-bottom: 5px;
+            font-size: 14px;
         }
-        
         .input-area {
             display: flex;
             gap: 10px;
         }
-        
-        #questionInput {
+        .input-area input {
             flex: 1;
-            padding: 12px 18px;
-            border: 1px solid #ddd;
-            border-radius: 25px;
-            font-size: 15px;
-            outline: none;
-            transition: border-color 0.3s;
-        }
-        
-        #questionInput:focus {
-            border-color: #007bff;
-        }
-        
-        #sendBtn {
-            padding: 12px 24px;
-            background: #007bff;
-            color: white;
-            border: none;
-            border-radius: 25px;
-            cursor: pointer;
-            font-size: 15px;
-            font-weight: 500;
-            transition: background 0.3s;
-        }
-        
-        #sendBtn:hover:not(:disabled) {
-            background: #0056b3;
-        }
-        
-        #sendBtn:disabled {
-            background: #ccc;
-            cursor: not-allowed;
         }
     </style>
 </head>
 <body>
-    <!-- Навигация -->
-    <nav class="navbar">
-        <a href="/" style="font-size: 20px; font-weight: bold;">Учёт расходов</a>
-        <div>
-            <a href="/">Главная</a>
-            <a href="/chat">💬 Чат с AI</a>
-            <a href="{{ url_for('logout') }}">Выйти</a>
-        </div>
-    </nav>
-    
-    <!-- Чат -->
-    <div class="chat-container">
-        <h2>💬 Чат с AI-ассистентом</h2>
-        
-        <div id="messages">
-            <div class="message ai">
-                <span class="message-icon">🤖</span>
-                <div class="message-content">
-                    Привет! Я AI-ассистент. Спрашивай о финансах, бюджете, экономии — помогу разобраться! 
-                </div>
+    <div class="container">
+        <div class="header">
+            <h1>💬 Чат с AI-ассистентом</h1>
+            <div class="user-actions">
+                <a href="/" class="chat-btn">← На главную</a>
+                <a href="/chat" class="chat-btn">💬 Чат с AI</a>
+                <a href="/ai-analytics" class="analytics-btn">📊 AI-аналитика</a>
+                <a href="/reminders" class="reminders-btn"> Напоминания</a>
+                <a href="{{ url_for('logout') }}" class="logout-btn">Выйти</a>
             </div>
         </div>
-        
+
+        <div class="chat-container" id="chatContainer">
+            <div class="message ai">
+                <div class="message-header">🤖 AI-ассистент</div>
+                <div>Привет! Я AI-ассистент. Спрашивай о финансах, бюджете, экономии — помогу разобраться!</div>
+            </div>
+        </div>
+
         <div class="input-area">
-            <input type="text" 
-                   id="questionInput" 
-                   placeholder="Задайте вопрос..."
-                   onkeypress="if(event.key==='Enter') sendMessage()">
-            <button id="sendBtn" onclick="sendMessage()">Отправить</button>
+            <input type="text" id="questionInput" placeholder="Задайте вопрос..." onkeypress="if(event.key==='Enter')sendMessage()">
+            <button onclick="sendMessage()">Отправить</button>
         </div>
     </div>
-    
+
     <script>
         async function sendMessage() {
             const input = document.getElementById('questionInput');
             const question = input.value.trim();
-            const btn = document.getElementById('sendBtn');
-            
             if (!question) return;
-            
-            // Добавляем вопрос пользователя
+
+            // Добавляем сообщение пользователя
             addMessage(question, 'user');
             input.value = '';
-            
-            // Блокируем кнопку
-            btn.disabled = true;
-            btn.textContent = '🤔 Думаю...';
-            
-            // Индикатор загрузки
-            const loadingId = addMessage(' Печатает...', 'ai', true);
-            
+
+            // Показываем индикатор загрузки
+            const loadingId = addMessage('⏳ Думаю...', 'ai', true);
+
             try {
-                const response = await fetch('/api/ai/ask', {
+                const res = await fetch('/api/ai/ask', {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
                     body: JSON.stringify({question: question})
                 });
                 
-                const data = await response.json();
+                const data = await res.json();
                 
-                // Удаляем индикатор
-                const loadingMsg = document.getElementById(loadingId);
-                if (loadingMsg) loadingMsg.remove();
+                // Удаляем индикатор загрузки
+                removeMessage(loadingId);
                 
                 if (data.success) {
                     addMessage(data.answer, 'ai');
                 } else {
                     addMessage('❌ Ошибка: ' + data.error, 'ai');
                 }
-            } catch (error) {
-                const loadingMsg = document.getElementById(loadingId);
-                if (loadingMsg) loadingMsg.remove();
-                addMessage('❌ Ошибка соединения: ' + error.message, 'ai');
-            } finally {
-                btn.disabled = false;
-                btn.textContent = 'Отправить';
-                input.focus();
+            } catch (err) {
+                removeMessage(loadingId);
+                addMessage('❌ Ошибка соединения: ' + err.message, 'ai');
             }
         }
-        
+
         function addMessage(text, sender, isLoading = false) {
-            const messagesDiv = document.getElementById('messages');
+            const container = document.getElementById('chatContainer');
             const id = 'msg-' + Date.now();
-            
-            const messageDiv = document.createElement('div');
-            messageDiv.id = id;
-            messageDiv.className = `message ${sender}`;
-            
-            const icon = document.createElement('span');
-            icon.className = 'message-icon';
-            icon.textContent = sender === 'user' ? '👤' : '🤖';
-            
-            const content = document.createElement('div');
-            content.className = 'message-content';
-            content.textContent = text;
-            
-            messageDiv.appendChild(icon);
-            messageDiv.appendChild(content);
-            messagesDiv.appendChild(messageDiv);
-            
-            messagesDiv.scrollTop = messagesDiv.scrollHeight;
-            
+            const div = document.createElement('div');
+            div.className = `message ${sender}`;
+            div.id = id;
+            div.innerHTML = `
+                <div class="message-header">${sender === 'user' ? '👤 Вы' : '🤖 AI-ассистент'}</div>
+                <div>${text}</div>
+            `;
+            container.appendChild(div);
+            container.scrollTop = container.scrollHeight;
             return id;
+        }
+
+        function removeMessage(id) {
+            const msg = document.getElementById(id);
+            if (msg) msg.remove();
         }
     </script>
 </body>
-</html> 
+</html>

@@ -1,20 +1,24 @@
 from datetime import datetime
 import sqlite3
 from flask import Flask, render_template, request, redirect, url_for, session, flash, jsonify
-# Вместо from database import (...)
-from backend import (
-    init_db, check_nickname, check_password,
+from backend import (   # теперь здесь есть все функции, включая уведомления и init_db
+    check_nickname, check_password,
     create_user, verify_user, get_user_by_id,
     create_group, join_group, get_user_groups,
     add_expense, delete_expense, get_expenses,
     get_group_stats, get_personal_total, get_categories,
-    get_group_debts, get_group_members_for_select
+    get_group_debts,
+    add_notification,
+    get_notifications,
+    get_unread_count,
+    mark_notification_read,
+    mark_all_notifications_read,
+    init_db          # теперь доступно
 )
 from ai_service import ask_ai, categorize_expense, analyze_group_expenses, generate_debt_reminder
 
 app = Flask(__name__)
 app.secret_key = "change-this-to-random-secret-key"
-
 DEFAULT_CATEGORIES = ["Еда", "Транспорт", "Развлечения", "Жильё", "Здоровье", "Другое"]
 
 def get_current_user():
@@ -31,14 +35,14 @@ def index():
     user = get_current_user()
     if not user:
         return redirect(url_for("login"))
-
+    
     groups = get_user_groups(user["id"])
     current_group_id = request.args.get("group", "personal")
     current_month = request.args.get("month", datetime.now().strftime("%Y-%m"))
     category_filter = request.args.get("category", "")
     today = datetime.now().strftime("%Y-%m-%d")
+    
     current_group_code = ""
-
     if current_group_id == "personal":
         expenses = get_expenses(month=current_month, category=category_filter or None, user_id=user["id"])
         total = get_personal_total(user["id"], current_month)
@@ -49,13 +53,12 @@ def index():
         expenses = get_expenses(month=current_month, category=category_filter or None, group_id=group_id)
         group_stats = get_group_stats(group_id, current_month)
         total = group_stats["total"]
-
         group_info = next((g for g in groups if g["id"] == group_id), None)
         current_group_name = group_info["name"] if group_info else "Группа"
         current_group_code = group_info["code"] if group_info else ""
-
+    
     categories = sorted(set(DEFAULT_CATEGORIES + get_categories()))
-
+    
     return render_template(
         "index.html",
         user=user,
@@ -79,11 +82,11 @@ def index():
 def login():
     if get_current_user():
         return redirect(url_for("index"))
-
+    
     if request.method == "POST":
         nickname = request.form.get("nickname", "").strip()
         password = request.form.get("password", "")
-
+        
         user = verify_user(nickname, password)
         if user:
             session["user_id"] = user["id"]
@@ -91,29 +94,29 @@ def login():
             return redirect(url_for("index"))
         else:
             flash("Неверный никнейм или пароль", "error")
-
+    
     return render_template("login.html")
 
 @app.route("/register", methods=["GET", "POST"])
 def register():
     if get_current_user():
         return redirect(url_for("index"))
-
+    
     if request.method == "POST":
         nickname = request.form.get("nickname", "").strip()
         real_name = request.form.get("real_name", "").strip()
         password = request.form.get("password", "")
-
+        
         err = check_nickname(nickname)
         if err:
             flash(err, "error")
             return render_template("register.html", nickname=nickname, real_name=real_name)
-
+        
         err = check_password(password)
         if err:
             flash(err, "error")
             return render_template("register.html", nickname=nickname, real_name=real_name)
-
+        
         try:
             user_id = create_user(nickname, real_name, password)
             session["user_id"] = user_id
@@ -122,7 +125,7 @@ def register():
         except sqlite3.IntegrityError:
             flash("Такой никнейм уже занят!", "error")
             return render_template("register.html", nickname=nickname, real_name=real_name)
-
+    
     return render_template("register.html")
 
 @app.route("/logout")
@@ -137,11 +140,11 @@ def create_group_route():
     user = get_current_user()
     if not user:
         return redirect(url_for("login"))
-
+    
     group_name = request.form.get("group_name", "").strip()
     if not group_name:
         return redirect(url_for("index"))
-
+    
     group = create_group(group_name)
     join_group(group["code"], user["id"])
     return redirect(url_for("index", group=group["id"]))
@@ -151,11 +154,11 @@ def join_group_route():
     user = get_current_user()
     if not user:
         return redirect(url_for("login"))
-
+    
     code = request.form.get("code", "").strip().upper()
     if not code:
         return redirect(url_for("index"))
-
+    
     group = join_group(code, user["id"])
     if group:
         return redirect(url_for("index", group=group["id"]))
@@ -170,26 +173,24 @@ def add():
     user = get_current_user()
     if not user:
         return redirect(url_for("login"))
-
+    
     try:
         amount = float(request.form["amount"].replace(",", "."))
     except ValueError:
         return redirect(url_for("index"))
-
+    
     category = request.form.get("category", "").strip()
     custom_category = request.form.get("custom_category", "").strip()
-
     if category == "__custom__" and custom_category:
         category = custom_category
     if not category:
         category = "Другое"
-
+    
     description = request.form.get("description", "").strip()
     date = request.form.get("date") or datetime.now().strftime("%Y-%m-%d")
-
     group_id_param = request.form.get("group_id", "personal")
     group_id = None if group_id_param == "personal" else int(group_id_param)
-
+    
     add_expense(amount, category, description, date, user["id"], group_id)
     return redirect(url_for("index", group=group_id_param))
 
@@ -198,11 +199,11 @@ def delete(expense_id):
     delete_expense(expense_id)
     group_id = request.form.get("group_id", "personal")
     return redirect(url_for("index", group=group_id))
+
 # ==================== AI-ЧАТ ====================
 
 @app.route("/chat")
 def chat():
-    """Страница чата с AI-ассистентом"""
     user = get_current_user()
     if not user:
         return redirect(url_for("login"))
@@ -210,7 +211,6 @@ def chat():
 
 @app.route("/api/ai/ask", methods=["POST"])
 def api_ask():
-    """API для вопросов к AI"""
     try:
         data = request.get_json()
         question = data.get("question", "").strip()
@@ -222,12 +222,10 @@ def api_ask():
             }), 400
         
         answer = ask_ai(question)
-        
         return jsonify({
             "success": True,
             "answer": answer
         })
-        
     except Exception as e:
         return jsonify({
             "success": False,
@@ -236,7 +234,6 @@ def api_ask():
 
 @app.route("/api/ai/categorize", methods=["POST"])
 def api_categorize():
-    """Автокатегоризация расхода"""
     try:
         data = request.get_json()
         description = data.get("description", "").strip()
@@ -246,7 +243,6 @@ def api_categorize():
         
         from ai_service import categorize_expense
         category = categorize_expense(description)
-        
         return jsonify({"success": True, "category": category})
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
@@ -255,15 +251,14 @@ def api_categorize():
 
 @app.route("/ai-analytics")
 def ai_analytics():
-    """Страница AI-аналитики"""
     user = get_current_user()
     if not user:
         return redirect(url_for("login"))
-    return render_template("ai_analytics.html", user=user)
+    groups = get_user_groups(user["id"])
+    return render_template("ai_analytics.html", user=user, groups=groups)
 
 @app.route("/api/ai/analyze", methods=["POST"])
 def api_analyze():
-    """Анализ расходов группы"""
     try:
         data = request.get_json()
         expenses = data.get("expenses", [])
@@ -273,14 +268,12 @@ def api_analyze():
         
         from ai_service import analyze_group_expenses
         result = analyze_group_expenses(expenses)
-        
         return jsonify(result)
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
 @app.route("/api/expenses")
 def api_expenses():
-    """Получить расходы для AI-анализа"""
     user = get_current_user()
     if not user:
         return jsonify([])
@@ -289,55 +282,27 @@ def api_expenses():
     current_month = datetime.now().strftime("%Y-%m")
     
     if group_id == "personal":
-        expenses = get_expenses(month=current_month, category=None, user_id=user["id"])
+        expenses = get_expenses(month=current_month, user_id=user["id"])
     else:
-        expenses = get_expenses(month=current_month, category=None, group_id=int(group_id))
+        expenses = get_expenses(month=current_month, group_id=int(group_id))
     
-    # Преобразуем в словари (безопасно)
     result = []
     for e in expenses:
-        try:
-            # Пытаемся получить как словарь
-            if isinstance(e, dict):
-                amount = float(e.get("amount", 0))
-                result.append({
-                    "user_name": e.get("user_name", user["real_name"]),
-                    "category": e.get("category", ""),
-                    "amount": amount,
-                    "description": e.get("description", ""),
-                    "date": str(e.get("date", ""))
-                })
-            else:
-                # Если кортеж — берём по позициям с проверкой
-                # Обычно: (id, date, user_name, category, amount, description)
-                # Но порядок может отличаться, поэтому используем try
-                amount = 0
-                for val in e:
-                    try:
-                        amount = float(val)
-                        break
-                    except (ValueError, TypeError):
-                        continue
-                
-                result.append({
-                    "user_name": str(e[2]) if len(e) > 2 else user["real_name"],
-                    "category": str(e[3]) if len(e) > 3 else "",
-                    "amount": amount,
-                    "description": str(e[5]) if len(e) > 5 else "",
-                    "date": str(e[1]) if len(e) > 1 else ""
-                })
-        except Exception as ex:
-            # Пропускаем битые записи
-            print(f"Пропущена запись: {e}, ошибка: {ex}")
-            continue
-    
+        row_dict = dict(e)
+        result.append({
+            "id": row_dict.get("id"),
+            "user_name": row_dict.get("user_name") or user["real_name"],
+            "category": row_dict.get("category", ""),
+            "amount": float(row_dict.get("amount", 0)),
+            "description": row_dict.get("description", ""),
+            "date": str(row_dict.get("date", ""))
+        })
     return jsonify(result)
 
-# ==================== AI-НАПОМИНАНИЯ О ДОЛГАХ ====================
+# ==================== НАПОМИНАНИЯ О ДОЛГАХ ====================
 
 @app.route("/reminders")
 def reminders():
-    """Страница напоминаний о долгах"""
     user = get_current_user()
     if not user:
         return redirect(url_for("login"))
@@ -354,7 +319,6 @@ def reminders():
 
 @app.route("/api/ai/reminders", methods=["POST"])
 def api_reminders():
-    """Генерация напоминаний о долгах"""
     try:
         data = request.get_json()
         debts = data.get("debts", [])
@@ -384,20 +348,17 @@ def api_reminders():
 
 @app.route("/api/debts")
 def api_debts():
-    """Получить список долгов"""
     user = get_current_user()
     if not user:
         return jsonify([])
     
     current_group_id = request.args.get("group", "personal")
-    
     if current_group_id == "personal":
         return jsonify([])
     
     try:
         group_id = int(current_group_id)
         debts_raw = get_group_debts(group_id)
-        
         debts = []
         for d in debts_raw:
             debts.append({
@@ -407,14 +368,91 @@ def api_debts():
                 "amount": float(d["amount"]),
                 "description": d["description"] or ""
             })
-        
         return jsonify(debts)
     except Exception as e:
         print(f"Ошибка получения долгов: {e}")
         return jsonify([])
 
+# ==================== ОТПРАВКА НАПОМИНАНИЯ О ДОЛГЕ ====================
+
+@app.route("/api/remind", methods=["POST"])
+def api_remind():
+    try:
+        data = request.get_json()
+        debtor_id = data.get("debtor_id")
+        creditor_id = data.get("creditor_id")
+        amount = float(data.get("amount", 0))
+        description = data.get("description", "")
+        
+        if not debtor_id or not creditor_id:
+            return jsonify({"error": "Не указан должник или кредитор"}), 400
+        
+        debtor = get_user_by_id(debtor_id)
+        creditor = get_user_by_id(creditor_id)
+        if not debtor or not creditor:
+            return jsonify({"error": "Пользователь не найден"}), 404
+        
+        reminder_text = generate_debt_reminder(
+            debtor_name=debtor["real_name"],
+            creditor_name=creditor["real_name"],
+            amount=amount,
+            description=description or "общие расходы"
+        )
+        
+        notification_id = add_notification(
+            user_id=debtor_id,
+            from_user_id=creditor_id,
+            message=reminder_text,
+            amount=amount,
+            description=description
+        )
+        
+        return jsonify({
+            "success": True,
+            "notification_id": notification_id,
+            "message": reminder_text
+        })
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+# ==================== УВЕДОМЛЕНИЯ ====================
+
+@app.route("/api/notifications")
+def api_notifications():
+    user = get_current_user()
+    if not user:
+        return jsonify([])
+    
+    notifications = get_notifications(user["id"])
+    return jsonify(notifications)
+
+@app.route("/api/notifications/unread-count")
+def api_unread_count():
+    user = get_current_user()
+    if not user:
+        return jsonify({"count": 0})
+    
+    count = get_unread_count(user["id"])
+    return jsonify({"count": count})
+
+@app.route("/api/notifications/<int:notification_id>/read", methods=["POST"])
+def api_mark_read(notification_id):
+    user = get_current_user()
+    if not user:
+        return jsonify({"error": "Не авторизован"}), 401
+    
+    mark_notification_read(notification_id, user["id"])
+    return jsonify({"success": True})
+
+@app.route("/api/notifications/read-all", methods=["POST"])
+def api_mark_all_read():
+    user = get_current_user()
+    if not user:
+        return jsonify({"error": "Не авторизован"}), 401
+    
+    mark_all_notifications_read(user["id"])
+    return jsonify({"success": True})
 
 if __name__ == "__main__":
     init_db()
     app.run(debug=True)
-

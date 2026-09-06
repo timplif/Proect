@@ -11,9 +11,9 @@
         <div class="header">
             <h1>Привет, {{ user.real_name }}!</h1>
             <div class="user-actions">
-                <button type="button" onclick="showModal('create-group-modal')">Создать группу</button>
-                <button type="button" onclick="showModal('join-group-modal')">Присоединиться</button>
-                <a href="/chat" class="chat-btn">💬 Чат с AI</a> 
+                <button onclick="document.getElementById('createGroupModal').style.display='flex'">Создать группу</button>
+                <button onclick="document.getElementById('joinGroupModal').style.display='flex'">Присоединиться</button>
+                <a href="/chat" class="chat-btn"> Чат с AI</a>
                 <a href="/ai-analytics" class="analytics-btn"> AI-аналитика</a>
                 <a href="/reminders" class="reminders-btn">💰 Напоминания</a>
                 <a href="{{ url_for('logout') }}" class="logout-btn">Выйти</a>
@@ -28,7 +28,7 @@
 
         <div class="group-selector">
             <label>Текущая группа:</label>
-            <select onchange="switchGroup(this.value)">
+            <select onchange="location.href='/?group='+this.value">
                 <option value="personal" {% if current_group_id == 'personal' %}selected{% endif %}>Личные расходы</option>
                 {% for g in groups %}
                     <option value="{{ g.id }}" {% if current_group_id == g.id|string %}selected{% endif %}>{{ g.name }}</option>
@@ -38,14 +38,14 @@
 
         {% if current_group_id != 'personal' and current_group_code %}
         <div class="group-code">
-            <strong>Код группы:</strong>
-            <span class="code-value" id="group-code">{{ current_group_code }}</span>
-            <button type="button" onclick="copyCode()" class="copy-btn">Копировать</button>
+            <span>Код группы:</span>
+            <span class="code-value">{{ current_group_code }}</span>
+            <button class="copy-btn" onclick="navigator.clipboard.writeText('{{ current_group_code }}')">Копировать</button>
         </div>
         {% endif %}
 
         <div class="total">
-            Итого за {{ current_month }}: <strong>{{ "%.2f"|format(total) }} ₽</strong>
+            <strong>Итого за {{ current_month }}:</strong> {{ "%.2f"|format(total) }} ₽
             {% if current_group_id != 'personal' %}
                 <span class="group-name">({{ current_group_name }})</span>
             {% endif %}
@@ -55,198 +55,153 @@
         <div class="stats">
             <h3>Статистика группы</h3>
             <table>
-                <thead>
-                    <tr>
-                        <th>Участник</th>
-                        <th>Расход</th>
-                        <th>Процент</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for u in group_stats.users %}
-                    <tr>
-                        <td>{{ u.user_name }}{% if u.user_name == user.real_name %} (вы){% endif %}</td>
-                        <td>{{ "%.2f"|format(u.total) }} ₽</td>
-                        <td>{{ "%.1f"|format(u.percentage) }}%</td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
+                <tr>
+                    <th>Участник</th>
+                    <th>Расход</th>
+                    <th>Процент</th>
+                </tr>
+                {% for u in group_stats.users %}
+                <tr>
+                    <td>{{ u.user_name }}{% if u.user_name == user.real_name %} (вы){% endif %}</td>
+                    <td>{{ "%.2f"|format(u.total) }} ₽</td>
+                    <td>{{ "%.1f"|format(u.percentage) }}%</td>
+                </tr>
+                {% endfor %}
             </table>
         </div>
         {% endif %}
 
-        <form method="GET" class="filters">
-            <label>Месяц:
-                <input type="month" name="month" value="{{ current_month }}">
-            </label>
-            <label>Категория:
-                <select name="category">
+        <div class="filters">
+            <div class="row">
+                <label>Месяц:</label>
+                <input type="month" id="monthFilter" value="{{ current_month }}">
+            </div>
+            <div class="row">
+                <label>Категория:</label>
+                <select id="categoryFilter">
                     <option value="">Все</option>
                     {% for c in categories %}
-                        <option value="{{ c }}" {% if c == category_filter %}selected{% endif %}>{{ c }}</option>
+                        <option value="{{ c }}" {% if category_filter == c %}selected{% endif %}>{{ c }}</option>
                     {% endfor %}
                 </select>
-            </label>
-            <input type="hidden" name="group" value="{{ current_group_id }}">
-            <button type="submit">Показать</button>
-        </form>
+            </div>
+            <button onclick="applyFilters()">Показать</button>
+        </div>
 
-        <form method="POST" action="{{ url_for('add') }}" class="add-form">
+        <div class="add-form">
             <h3>Добавить расход</h3>
-            <input type="hidden" name="group_id" value="{{ current_group_id }}">
-            <div class="row">
-                <input type="number" name="amount" step="0.01" min="0" placeholder="Сумма" required>
-                <input type="date" name="date" value="{{ today }}">
-            </div>
-            <div class="row">
-                <select name="category" id="category-select" onchange="toggleCustom()">
-                    {% for c in default_categories %}
-                        <option value="{{ c }}">{{ c }}</option>
-                    {% endfor %}
-                    <option value="__custom__">Своя категория...</option>
-                </select>
-                <input type="text" name="custom_category" id="custom-category" placeholder="Название категории" style="display:none">
-            </div>
-            <div style="display: flex; gap: 8px; margin-bottom: 10px;">
-    <input type="text" name="description" id="description" placeholder="Описание (необязательно)" style="flex: 1;">
-    <button type="button" onclick="autoCategorize(event)" style="background: #17a2b8; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; font-size: 14px;">
-        🤖 Авто
-    </button>
-</div>
-<small style="color: #6c757d; font-size: 12px;">Нажмите "Авто" для автоматического определения категории</small>
-            <button type="submit">Добавить</button>
-        </form>
+            <form action="/add" method="POST">
+                <div class="row">
+                    <input type="number" step="0.01" name="amount" placeholder="Сумма" required>
+                    <select name="category" id="categorySelect" onchange="checkCustomCategory()">
+                        {% for c in default_categories %}
+                            <option value="{{ c }}">{{ c }}</option>
+                        {% endfor %}
+                        <option value="__custom__">Своя категория...</option>
+                    </select>
+                    <input type="text" name="custom_category" id="customCategory" placeholder="Название категории" style="display:none">
+                </div>
+                <div class="row">
+                    <input type="text" name="description" id="descriptionInput" placeholder="Описание" oninput="autoCategorize()">
+                    <input type="date" name="date" value="{{ today }}">
+                    <input type="hidden" name="group_id" value="{{ current_group_id }}">
+                </div>
+                <button type="button" onclick="autoCategorize()" style="background:#6f42c1">🤖 Авто</button>
+                <button type="submit">Добавить</button>
+            </form>
+            <small style="color:#888;display:block;margin-top:10px">Нажмите "Авто" для автоматического определения категории</small>
+        </div>
 
         <h3>Список расходов</h3>
         {% if expenses %}
-            <table>
-                <thead>
-                    <tr>
-                        <th>Дата</th>
-                        {% if current_group_id != 'personal' %}<th>Кто</th>{% endif %}
-                        <th>Категория</th>
-                        <th>Описание</th>
-                        <th>Сумма</th>
-                        <th></th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for e in expenses %}
-                    <tr>
-                        <td>{{ e.date }}</td>
-                        {% if current_group_id != 'personal' %}<td>{{ e.user_name }}</td>{% endif %}
-                        <td>{{ e.category }}</td>
-                        <td>{{ e.description or '' }}</td>
-                        <td>{{ "%.2f"|format(e.amount) }} ₽</td>
-                        <td>
-                            <form method="POST" action="{{ url_for('delete', expense_id=e.id) }}" style="display:inline">
-                                <input type="hidden" name="group_id" value="{{ current_group_id }}">
-                                <button type="submit" class="delete-btn" title="Удалить">×</button>
-                            </form>
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
+        <table>
+            <tr>
+                <th>Дата</th>
+                {% if current_group_id != 'personal' %}
+                <th>Кто</th>
+                {% endif %}
+                <th>Категория</th>
+                <th>Описание</th>
+                <th>Сумма</th>
+                <th></th>
+            </tr>
+            {% for e in expenses %}
+            <tr>
+                <td>{{ e.date }}</td>
+                {% if current_group_id != 'personal' %}
+                <td>{{ e.user_name }}</td>
+                {% endif %}
+                <td>{{ e.category }}</td>
+                <td>{{ e.description or '' }}</td>
+                <td>{{ "%.2f"|format(e.amount) }} ₽</td>
+                <td>
+                    <form action="/delete/{{ e.id }}" method="POST" style="display:inline">
+                        <input type="hidden" name="group_id" value="{{ current_group_id }}">
+                        <button type="submit" class="delete-btn">×</button>
+                    </form>
+                </td>
+            </tr>
+            {% endfor %}
+        </table>
         {% else %}
-            <p class="empty">Расходов нет.</p>
+        <p class="empty">Расходов нет.</p>
         {% endif %}
     </div>
 
-    <div id="create-group-modal" class="modal">
+    <!-- Модалки -->
+    <div id="createGroupModal" class="modal">
         <div class="modal-content">
-            <span class="close" onclick="hideModal('create-group-modal')">&times;</span>
+            <span class="close" onclick="document.getElementById('createGroupModal').style.display='none'">&times;</span>
             <h2>Создать группу</h2>
-            <form method="POST" action="{{ url_for('create_group_route') }}">
+            <form action="/create-group" method="POST">
                 <input type="text" name="group_name" placeholder="Название группы" required>
                 <button type="submit">Создать</button>
             </form>
         </div>
     </div>
 
-    <div id="join-group-modal" class="modal">
+    <div id="joinGroupModal" class="modal">
         <div class="modal-content">
-            <span class="close" onclick="hideModal('join-group-modal')">&times;</span>
+            <span class="close" onclick="document.getElementById('joinGroupModal').style.display='none'">&times;</span>
             <h2>Присоединиться к группе</h2>
-            <form method="POST" action="{{ url_for('join_group_route') }}">
-                <input type="text" name="code" placeholder="Код группы (6 символов)" maxlength="6" required style="text-transform: uppercase;">
+            <form action="/join-group" method="POST">
+                <input type="text" name="code" placeholder="Код группы" required>
                 <button type="submit">Присоединиться</button>
             </form>
         </div>
     </div>
 
     <script>
-        function toggleCustom() {
-            const sel = document.getElementById('category-select');
-            const inp = document.getElementById('custom-category');
-            inp.style.display = sel.value === '__custom__' ? 'block' : 'none';
-            if (sel.value !== '__custom__') inp.value = '';
-        }
-        function switchGroup(groupId) {
-            const url = new URL(window.location);
-            url.searchParams.set('group', groupId);
-            window.location = url;
-        }
-        function showModal(id) { document.getElementById(id).style.display = 'flex'; }
-        function hideModal(id) { document.getElementById(id).style.display = 'none'; }
-        function copyCode() {
-            const code = document.getElementById('group-code').textContent;
-            navigator.clipboard.writeText(code).then(() => {
-                alert('Код скопирован: ' + code);
-            }).catch(() => alert('Не удалось скопировать'));
-        }
-        window.onclick = function(event) {
-            if (event.target.classList.contains('modal')) event.target.style.display = 'none';
+        function checkCustomCategory() {
+            const select = document.getElementById('categorySelect');
+            const custom = document.getElementById('customCategory');
+            custom.style.display = select.value === '__custom__' ? 'block' : 'none';
         }
 
-async function autoCategorize(event) {
-    const descInput = document.getElementById('description');
-    const categorySelect = document.getElementById('category-select');
-    const desc = descInput.value.trim();
-    
-    if (!desc) {
-        alert('Сначала введите описание расхода');
-        return;
-    }
-    
-    const btn = event.target;
-    const originalText = btn.innerHTML;
-    btn.innerHTML = '⏳ Определяю...';
-    btn.disabled = true;
-    
-    try {
-        const response = await fetch('/api/ai/categorize', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({description: desc})
-        });
-        
-        const data = await response.json();
-        
-        if (data.success) {
-            // Устанавливаем категорию в селекте
-            categorySelect.value = data.category;
+        async function autoCategorize() {
+            const desc = document.getElementById('descriptionInput').value;
+            if (!desc) return alert('Введите описание');
             
-            // Визуальная обратная связь
-            btn.innerHTML = '✅ Определено!';
-            btn.style.background = '#28a745';
-            
-            setTimeout(() => {
-                btn.innerHTML = originalText;
-                btn.style.background = '#17a2b8';
-                btn.disabled = false;
-            }, 1500);
-        } else {
-            alert('Не удалось определить категорию: ' + data.error);
-            btn.innerHTML = originalText;
-            btn.disabled = false;
+            const res = await fetch('/api/ai/categorize', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({description: desc})
+            });
+            const data = await res.json();
+            if (data.success) {
+                document.getElementById('categorySelect').value = data.category;
+                checkCustomCategory();
+            }
         }
-    } catch (error) {
-        alert('Ошибка: ' + error.message);
-        btn.innerHTML = originalText;
-        btn.disabled = false;
-    }
-}
-</script>
+
+        function applyFilters() {
+            const month = document.getElementById('monthFilter').value;
+            const category = document.getElementById('categoryFilter').value;
+            const group = '{{ current_group_id }}';
+            let url = `/?month=${month}&group=${group}`;
+            if (category) url += `&category=${category}`;
+            location.href = url;
+        }
+    </script>
 </body>
 </html>

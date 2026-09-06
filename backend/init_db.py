@@ -1,8 +1,9 @@
+# backend/init_db.py
 import sqlite3
-from .database import get_connection
-#print("hello")
+from config import DB_PATH
+
 def init_db():
-    conn = get_connection()
+    conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
 
     cursor.execute('''
@@ -62,9 +63,21 @@ def init_db():
         )
     ''')
 
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS notifications (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            from_user_id INTEGER NOT NULL,
+            message TEXT NOT NULL,
+            amount REAL,
+            description TEXT,
+            is_read INTEGER DEFAULT 0,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES users(id),
+            FOREIGN KEY (from_user_id) REFERENCES users(id)
+        )
+    ''')
+
     conn.commit()
     conn.close()
-    print("✅ База данных и таблицы созданы (по вашей схеме).")
-
-if __name__ == "__main__":
-    init_db()
+    print("✅ База данных и таблицы созданы.")

@@ -1,4 +1,5 @@
 * { box-sizing: border-box; }
+
 body {
     font-family: -apple-system, Segoe UI, Roboto, sans-serif;
     background: #f5f5f7;
@@ -6,6 +7,7 @@ body {
     margin: 0;
     padding: 20px;
 }
+
 .container { max-width: 900px; margin: 0 auto; }
 
 /* --- Флеш-сообщения --- */
@@ -21,8 +23,10 @@ body {
     flex-wrap: wrap;
     gap: 15px;
 }
+
 .header h1 { margin: 0; font-size: 24px; }
-.user-actions { display: flex; gap: 10px; align-items: center; }
+
+.user-actions { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
 
 .logout-btn {
     padding: 10px 18px;
@@ -34,6 +38,7 @@ body {
     font-weight: 500;
     transition: background 0.2s;
 }
+
 .logout-btn:hover { background: #ff453a; }
 
 /* --- Селектор групп --- */
@@ -47,7 +52,9 @@ body {
     align-items: center;
     gap: 15px;
 }
+
 .group-selector label { font-weight: 500; }
+
 .group-selector select {
     padding: 8px 12px;
     border: 1px solid #d2d2d7;
@@ -69,6 +76,7 @@ body {
     gap: 10px;
     flex-wrap: wrap;
 }
+
 .code-value {
     font-family: monospace;
     font-size: 18px;
@@ -79,6 +87,7 @@ body {
     padding: 4px 8px;
     border-radius: 6px;
 }
+
 .copy-btn {
     padding: 6px 12px;
     font-size: 13px;
@@ -88,6 +97,7 @@ body {
     border-radius: 6px;
     cursor: pointer;
 }
+
 .copy-btn:hover { background: #e0e0e0; }
 
 h1 { margin-bottom: 10px; font-size: 24px; }
@@ -102,6 +112,7 @@ h3 { margin-top: 0; margin-bottom: 15px; font-size: 18px; }
     margin-bottom: 20px;
     box-shadow: 0 1px 3px rgba(0,0,0,0.05);
 }
+
 .group-name { color: #666; font-size: 14px; margin-left: 10px; }
 
 /* --- Статистика --- */
@@ -121,7 +132,9 @@ h3 { margin-top: 0; margin-bottom: 15px; font-size: 18px; }
     margin-bottom: 20px;
     box-shadow: 0 1px 3px rgba(0,0,0,0.05);
 }
+
 .filters { display: flex; gap: 15px; align-items: flex-end; flex-wrap: wrap; }
+
 .row { display: flex; gap: 10px; margin-bottom: 10px; flex-wrap: wrap; }
 
 input, select {
@@ -133,7 +146,9 @@ input, select {
     min-width: 120px;
     outline: none;
 }
+
 input:focus, select:focus { border-color: #0071e3; }
+
 input[type="number"] { flex: 0 0 150px; }
 
 button {
@@ -147,7 +162,13 @@ button {
     font-weight: 500;
     transition: background 0.2s;
 }
+
 button:hover { background: #0077ed; }
+
+button:disabled {
+    background: #ccc;
+    cursor: not-allowed;
+}
 
 /* --- Таблица --- */
 table {
@@ -158,8 +179,11 @@ table {
     overflow: hidden;
     box-shadow: 0 1px 3px rgba(0,0,0,0.05);
 }
+
 th, td { padding: 12px; text-align: left; border-bottom: 1px solid #eee; }
+
 th { background: #fafafa; font-weight: 600; color: #555; font-size: 14px; }
+
 tr:last-child td { border-bottom: none; }
 
 .delete-btn {
@@ -169,6 +193,7 @@ tr:last-child td { border-bottom: none; }
     padding: 0 8px;
     line-height: 1;
 }
+
 .delete-btn:hover { background: #fff0f0; }
 
 .empty { text-align: center; color: #888; padding: 30px; background: #fff; border-radius: 10px; }
@@ -184,6 +209,7 @@ tr:last-child td { border-bottom: none; }
     align-items: center;
     justify-content: center;
 }
+
 .modal-content {
     background: #fff;
     padding: 30px;
@@ -192,6 +218,7 @@ tr:last-child td { border-bottom: none; }
     max-width: 400px;
     position: relative;
 }
+
 .close {
     position: absolute;
     right: 20px; top: 15px;
@@ -200,8 +227,11 @@ tr:last-child td { border-bottom: none; }
     color: #aaa;
     cursor: pointer;
 }
+
 .close:hover { color: #000; }
+
 .modal-content h2 { margin-top: 0; }
+
 .modal-content form { display: flex; flex-direction: column; gap: 15px; }
 
 /* --- Логин/Регистрация --- */
@@ -214,10 +244,15 @@ tr:last-child td { border-bottom: none; }
     box-shadow: 0 2px 10px rgba(0,0,0,0.1);
     text-align: center;
 }
+
 .login-box h1 { margin-bottom: 10px; }
+
 .login-box p { color: #666; margin-bottom: 25px; }
+
 .login-box form { display: flex; flex-direction: column; gap: 15px; }
+
 .login-box a { color: #0071e3; text-decoration: none; font-weight: 500; }
+
 .login-box a:hover { text-decoration: underline; }
 
 .hint {
@@ -227,18 +262,10 @@ tr:last-child td { border-bottom: none; }
     text-align: left;
     margin-top: -10px;
 }
+
 .switch-link { margin-top: 20px; }
 
-/* --- Адаптив --- */
-@media (max-width: 600px) {
-    .header { flex-direction: column; align-items: flex-start; }
-    .user-actions { width: 100%; flex-wrap: wrap; }
-    .user-actions button, .logout-btn { flex: 1; text-align: center; }
-    .filters { flex-direction: column; align-items: stretch; }
-    .row { flex-direction: column; }
-    input[type="number"] { flex: 1; }
-}
-
+/* --- Кнопки навигации --- */
 .chat-btn {
     padding: 8px 16px;
     background: #17a2b8;
@@ -246,7 +273,6 @@ tr:last-child td { border-bottom: none; }
     border-radius: 4px;
     text-decoration: none;
     font-size: 14px;
-    margin-right: 5px;
 }
 
 .chat-btn:hover {
@@ -259,33 +285,6 @@ tr:last-child td { border-bottom: none; }
     color: white;
     border-radius: 4px;
     text-decoration: none;
-    margin: 0 5px;
-}
-
-.analytics-btn:hover {
-    background: #5a32a3;
-}
-
-.chat-btn {
-    padding: 8px 16px;
-    background: #17a2b8;
-    color: white;
-    border-radius: 4px;
-    text-decoration: none;
-    margin: 0 5px;
-}
-
-.chat-btn:hover {
-    background: #138496;
-}
-
-.analytics-btn {
-    padding: 8px 16px;
-    background: #6f42c1;
-    color: white;
-    border-radius: 4px;
-    text-decoration: none;
-    margin: 0 5px;
 }
 
 .analytics-btn:hover {
@@ -298,9 +297,18 @@ tr:last-child td { border-bottom: none; }
     color: white;
     border-radius: 4px;
     text-decoration: none;
-    margin: 0 5px;
 }
 
 .reminders-btn:hover {
     background: #f57c00;
+}
+
+/* --- Адаптив --- */
+@media (max-width: 600px) {
+    .header { flex-direction: column; align-items: flex-start; }
+    .user-actions { width: 100%; flex-wrap: wrap; }
+    .user-actions button, .logout-btn { flex: 1; text-align: center; }
+    .filters { flex-direction: column; align-items: stretch; }
+    .row { flex-direction: column; }
+    input[type="number"] { flex: 1; }
 }

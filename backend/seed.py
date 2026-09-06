@@ -3,7 +3,6 @@ import os
 from datetime import datetime, timedelta
 from werkzeug.security import generate_password_hash
 
-# Добавляем путь к проекту для импорта модулей
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from backend.database import get_connection
@@ -14,9 +13,12 @@ from backend.queries_db import (
     add_expense,
     add_debt,
 )
+from backend.init_db import init_db   # 👈 импортируем инициализацию
 
 def seed():
-    """Заполняет базу данных тестовыми данными, избегая NULL-значений."""
+    # 1. Создаём таблицы, если их ещё нет
+    init_db()
+
     conn = get_connection()
     cursor = conn.cursor()
 
