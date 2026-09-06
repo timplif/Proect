@@ -129,9 +129,6 @@ def get_categories() -> List[str]:
     return [r[0] for r in rows]
 
 # ---------- Debts ----------
-def init_debts_table():
-    # таблица создаётся в init_db, эта функция может быть пустой или проверять существование
-    pass
 
 def add_debt(group_id: int, debtor_id: int, creditor_id: int, amount: float, description: str = None):
     Debt.create(group_id, debtor_id, creditor_id, amount, description)

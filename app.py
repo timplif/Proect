@@ -8,7 +8,7 @@ from backend import (
     create_group, join_group, get_user_groups,
     add_expense, delete_expense, get_expenses,
     get_group_stats, get_personal_total, get_categories,
-    init_debts_table, get_group_debts, get_group_members_for_select
+    get_group_debts, get_group_members_for_select
 )
 from ai_service import ask_ai, categorize_expense, analyze_group_expenses, generate_debt_reminder
 
@@ -341,8 +341,6 @@ def reminders():
     user = get_current_user()
     if not user:
         return redirect(url_for("login"))
-    
-    init_debts_table()
     
     groups = get_user_groups(user["id"])
     current_group_id = request.args.get("group", "personal")
