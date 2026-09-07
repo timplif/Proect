@@ -1075,3 +1075,155 @@ tr:hover td {
 ::-webkit-scrollbar-thumb:hover {
     background: var(--primary-light);
 }
+/* Кнопка Авто для автокатегоризации */
+#autoCategorize {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+#autoCategorize:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(102, 126, 234, 0.5);
+}
+
+#autoCategorize:active {
+    transform: translateY(0);
+}
+
+#autoCategorize:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
+}
+/* Контейнер для кнопок Авто и Добавить */
+.add-expense-actions {
+    display: flex;
+    gap: 15px;
+    align-items: flex-end;
+    margin-top: 20px;
+}
+
+/* Кнопка Авто */
+#autoCategorize {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border: none;
+    padding: 12px 24px;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+    white-space: nowrap;
+    min-width: 120px;
+}
+
+#autoCategorize:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(102, 126, 234, 0.5);
+}
+
+#autoCategorize:active {
+    transform: translateY(0);
+}
+
+#autoCategorize:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
+}
+
+/* Кнопка Добавить */
+.add-expense-actions .btn-primary {
+    flex: 1;
+    padding: 12px 24px;
+    font-size: 14px;
+    font-weight: 600;
+}
+/* Кнопка "Вернуть долг" */
+.debt-btn.return {
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    color: white;
+    border: none;
+    padding: 6px 14px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 8px rgba(16, 185, 129, 0.3);
+}
+
+.debt-btn.return:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.5);
+    background: linear-gradient(135deg, #059669 0%, #047857 100%);
+}
+
+.debt-btn.return:active {
+    transform: translateY(0);
+}
+/* Стилизация select выбора группы */
+select[name="group_id"],
+#groupSelect,
+select.form-control {
+    background: rgba(255, 255, 255, 0.05) !important;
+    color: #fff !important;
+    border: 1px solid rgba(255, 255, 255, 0.1) !important;
+    border-radius: 10px !important;
+    padding: 12px 16px !important;
+    font-size: 14px !important;
+    font-weight: 500 !important;
+    outline: none !important;
+    transition: all 0.3s ease !important;
+    appearance: none !important;
+    -webkit-appearance: none !important;
+    -moz-appearance: none !important;
+    cursor: pointer !important;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23a78bfa' d='M6 9L1 4h10z'/%3E%3C/svg%3E") !important;
+    background-repeat: no-repeat !important;
+    background-position: right 16px center !important;
+    padding-right: 40px !important;
+}
+
+select[name="group_id"]:hover,
+#groupSelect:hover,
+select.form-control:hover {
+    border-color: rgba(167, 139, 250, 0.5) !important;
+    background: rgba(255, 255, 255, 0.08) !important;
+}
+
+select[name="group_id"]:focus,
+#groupSelect:focus,
+select.form-control:focus {
+    border-color: #a78bfa !important;
+    box-shadow: 0 0 0 3px rgba(167, 139, 250, 0.2) !important;
+}
+
+/* Опции выпадающего списка */
+select[name="group_id"] option,
+#groupSelect option,
+select.form-control option {
+    background: #1a1a2e !important;
+    color: #fff !important;
+    padding: 12px !important;
+    font-size: 14px !important;
+}
+
+select[name="group_id"] option:hover,
+#groupSelect option:hover,
+select.form-control option:hover {
+    background: rgba(167, 139, 250, 0.2) !important;
+}

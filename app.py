@@ -242,17 +242,27 @@ def api_ask():
 
 @app.route("/api/ai/categorize", methods=["POST"])
 def api_categorize():
+    """AI-категоризация расхода"""
     try:
         data = request.get_json()
-        description = data.get("description", "").strip()
-
+        description = data.get("description", "")
+        
         if not description:
-            return jsonify({"success": False, "error": "Описание пустое"}), 400
-
+            return jsonify({"category": "Другое"})
+        
+        from ai_service import categorize_expense
         category = categorize_expense(description)
-        return jsonify({"success": True, "category": category})
+        
+        print(f"=== КАТЕГОРИЗАЦИЯ ===")
+        print(f"Описание: {description}")
+        print(f"Категория: {category}")
+        print(f"====================")
+        
+        return jsonify({"category": category})
+        
     except Exception as e:
-        return jsonify({"success": False, "error": str(e)}), 500
+        print(f"Ошибка категоризации: {e}")
+        return jsonify({"category": "Другое", "error": str(e)})
 
 
 # ==================== AI-АНАЛИТИКА ====================

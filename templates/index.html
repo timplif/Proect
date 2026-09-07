@@ -130,9 +130,14 @@
                         <input type="text" name="description" placeholder="За что платёж?">
                     </div>
                     <input type="hidden" name="group_id" value="{{ current_group_id }}">
-                    <button type="submit" class="btn-primary">
-                        <span>+</span> Добавить
-                    </button>
+                    <div class="add-expense-actions">
+                        <button type="button" id="autoCategorize" class="btn-auto">
+                            Авто
+                        </button>
+                        <button type="submit" class="btn-primary">
+                            <span>+</span> Добавить
+                        </button>
+                    </div>
                 </form>
             </div>
         </div>
@@ -324,7 +329,7 @@
                     const isCreditor = d.creditor_id === currentUserId;
                     const isParticipant = d.debtor_id === currentUserId || d.creditor_id === currentUserId;
                     const remindBtn = isCreditor ? `<button class="debt-btn remind" onclick="sendRemind(${d.debtor_id}, ${d.creditor_id}, ${d.amount}, '${(d.description||'').replace(/'/g, "\\'")}')"></button>` : '';
-                    const deleteBtn = isParticipant ? `<button class="debt-btn delete" onclick="deleteDebt(${d.id})">✕</button>` : '';
+                    const deleteBtn = isParticipant ? `<button class="debt-btn return" onclick="returnDebt(${d.id})">Вернуть</button>` : '';
                     return `
                         <div class="debt-item">
                             <span class="debt-name">${d.debtor_name}</span>
@@ -394,6 +399,26 @@
                 if (data.success) loadDebts();
                 else alert('Ошибка: ' + data.error);
             } catch (e) { alert('Ошибка сети'); }
+        }
+        // Вернуть долг (погасить)
+        async function returnDebt(debtId) {
+            if (!confirm('Подтвердить возврат долга?')) return;
+    
+            try {
+                const response = await fetch(`/api/debts/${debtId}`, {
+                    method: 'DELETE'
+                });
+        
+            if (response.ok) {
+                loadDebts(); // Обновить список
+                updateNotifBadge(); // Обновить счётчик уведомлений
+            } else {
+                alert('Ошибка при возврате долга');
+            }
+        } catch (error) {
+            console.error('Ошибка:', error);
+            alert('Не удалось погасить долг');
+        }
         }
 
         async function sendRemind(debtor_id, creditor_id, amount, description) {
@@ -489,6 +514,40 @@
             }
             chatMessages.scrollTop = chatMessages.scrollHeight;
         });
+            // Автокатегоризация расходов
+    const autoBtn = document.getElementById('autoCategorize');
+    if (autoBtn) {
+        autoBtn.addEventListener('click', async function() {
+            const description = document.querySelector('[name="description"]');
+            const categorySelect = document.querySelector('[name="category"]');
+            
+            if (!description || !description.value.trim()) {
+                alert('Введите описание расхода!');
+                return;
+            }
+            
+            autoBtn.disabled = true;
+            autoBtn.textContent = ' Загрузка...';
+            
+            try {
+                const response = await fetch('/api/ai/categorize', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({description: description.value})
+                });
+                const data = await response.json();
+                if (data.category && categorySelect) {
+                    categorySelect.value = data.category;
+                }
+            } catch (error) {
+                console.error('Ошибка автокатегоризации:', error);
+                alert('Не удалось определить категорию');
+            } finally {
+                autoBtn.disabled = false;
+                autoBtn.textContent = '🤖 Авто';
+            }
+        });
+    }
 
         loadDebts();
         loadChart();
