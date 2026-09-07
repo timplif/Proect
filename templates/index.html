@@ -497,7 +497,7 @@
                 const res = await fetch('/api/ai/ask', {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({question: text})
+                    body: JSON.stringify({question: text, group_id: currentGroupId})
                 });
                 const data = await res.json();
                 loadingMsg.remove();

@@ -214,26 +214,120 @@ def delete(expense_id):
     return redirect(url_for("index", group=group_id))
 
 
-# ==================== AI-ЧАТ ====================
-
+# ============ AI-CHAT С КОНТЕКСТОМ ============
 @app.route("/api/ai/ask", methods=["POST"])
 def api_ask():
     try:
         data = request.get_json()
         question = data.get("question", "").strip()
-
+        group_id = data.get("group_id", "personal")
+        
         if not question:
             return jsonify({
                 "success": False,
                 "error": "Вопрос не может быть пустым"
             }), 400
+        
+        # Получаем текущего пользователя
+        user = session.get("user", {})
+        user_name = user.get("real_name", "Пользователь")
+        
+        # Собираем контекст: долги, участники, расходы
+        debts = []
+        members = []
+        expenses = []
+        
+        if group_id and group_id != "personal":
+            # Активные долги группы
+            debts = db.execute("""
+                SELECT d.*, u1.real_name as debtor_name, u2.real_name as creditor_name
+                FROM debts d
+                JOIN users u1 ON d.debtor_id = u1.id
+                JOIN users u2 ON d.creditor_id = u2.id
+                WHERE d.group_id = ? AND d.is_active = 1
+            """, (group_id,)).fetchall()
+            debts = [dict(d) for d in debts]
+            
+            # Участники группы
+            members = db.execute("""
+                SELECT u.real_name
+                FROM group_members gm
+                JOIN users u ON gm.user_id = u.id
+                WHERE gm.group_id = ?
+            """, (group_id,)).fetchall()
+            members = [dict(m) for m in members]
+            
+            # Последние 10 расходов
+            expenses = db.execute("""
+                SELECT e.*, u.real_name as user_name
+                FROM expenses e
+                JOIN users u ON e.user_id = u.id
+                WHERE e.group_id = ?
+                ORDER BY e.date DESC
+                LIMIT 10
+            """, (group_id,)).fetchall()
+            expenses = [dict(e) for e in expenses]
+        
+        # Формируем промпт с контекстом
+        prompt = f"""Ты — AI-ассистент приложения для учёта расходов "Новые Лица".
 
-        answer = ask_ai(question)
+ИНФОРМАЦИЯ О ПРИЛОЖЕНИИ:
+- Приложение для совместного учёта расходов и долгов
+- Пользователи создают группы и добавляют общие расходы
+- Система автоматически считает, кто кому должен
+- Есть AI-аналитика, автокатегоризация и чат-ассистент
+- Основные разделы: Главная (расходы, долги, AI-чат), Аналитика (AI-анализ расходов)
+
+КОНТЕКСТ ПОЛЬЗОВАТЕЛЯ:
+- Имя: {user_name}
+- Текущая группа: {'Личные расходы' if group_id == 'personal' else 'Группа #' + str(group_id)}
+"""
+        
+        if debts:
+            prompt += "\nАКТИВНЫЕ ДОЛГИ В ГРУППЕ:\n"
+            for debt in debts:
+                prompt += f"- {debt['debtor_name']} должен {debt['creditor_name']} {debt['amount']}₽"
+                if debt.get('description'):
+                    prompt += f" ({debt['description']})"
+                prompt += "\n"
+        else:
+            prompt += "\nАктивных долгов в группе нет.\n"
+        
+        if members:
+            prompt += "\nУЧАСТНИКИ ГРУППЫ:\n"
+            for m in members:
+                prompt += f"- {m['real_name']}\n"
+        
+        if expenses:
+            prompt += "\nПОСЛЕДНИЕ РАСХОДЫ (до 10):\n"
+            for exp in expenses:
+                prompt += f"- {exp.get('date', '')}: {exp.get('user_name', '')} — {exp.get('amount', 0)}₽ на {exp.get('category', '')}"
+                if exp.get('description'):
+                    prompt += f" ({exp['description']})"
+                prompt += "\n"
+        
+        prompt += f"""
+ВОПРОС ПОЛЬЗОВАТЕЛЯ: "{question}"
+
+ПРАВИЛА ОТВЕТА:
+- Отвечай кратко, дружелюбно и по делу
+- Если вопрос про долги — используй данные из "АКТИВНЫЕ ДОЛГИ"
+- Если вопрос про расходы — используй данные из "ПОСЛЕДНИЕ РАСХОДЫ"
+- Если вопрос про навигацию по сайту — объясни, где найти нужную функцию
+- Если не знаешь ответа — предложи задать вопрос про долги, расходы или аналитику
+- Отвечай на русском языке
+
+Ответ:"""
+        
+        answer = ask_ai(prompt)
+        
         return jsonify({
             "success": True,
             "answer": answer
         })
+        
     except Exception as e:
+        print(f"Ошибка AI-ассистента: {e}")
         return jsonify({
             "success": False,
             "error": str(e)
