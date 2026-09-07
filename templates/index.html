@@ -503,7 +503,10 @@
                 loadingMsg.remove();
                 const aiMsg = document.createElement('div');
                 aiMsg.className = 'chat-message agent-message';
-                aiMsg.textContent = data.success ? data.answer : '❌ Ошибка: ' + data.error;
+                // Используем Marked.js для парсинга Markdown
+                aiMsg.innerHTML = marked.parse(
+                    data.success ? data.answer : '❌ Ошибка: ' + data.error
+                );
                 chatMessages.appendChild(aiMsg);
             } catch (err) {
                 loadingMsg.remove();
@@ -554,5 +557,9 @@
         updateNotifBadge();
         setInterval(updateNotifBadge, 30000);
     </script>
+
+    <!-- Marked.js для форматирования Markdown -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+
 </body>
 </html>

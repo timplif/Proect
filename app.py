@@ -218,6 +218,10 @@ def delete(expense_id):
 @app.route("/api/ai/ask", methods=["POST"])
 def api_ask():
     try:
+        import sqlite3
+        db = sqlite3.connect('expenses.db')
+        db.row_factory = sqlite3.Row
+        
         data = request.get_json()
         question = data.get("question", "").strip()
         group_id = data.get("group_id", "personal")
@@ -244,7 +248,7 @@ def api_ask():
                 FROM debts d
                 JOIN users u1 ON d.debtor_id = u1.id
                 JOIN users u2 ON d.creditor_id = u2.id
-                WHERE d.group_id = ? AND d.is_active = 1
+                WHERE d.group_id = ?
             """, (group_id,)).fetchall()
             debts = [dict(d) for d in debts]
             
@@ -310,6 +314,12 @@ def api_ask():
 ВОПРОС ПОЛЬЗОВАТЕЛЯ: "{question}"
 
 ПРАВИЛА ОТВЕТА:
+"Форматируй ответ в Markdown:"
+"- Используй **жирный** для важного"
+"- Используй нумерованные списки (1. 2. 3.)"
+"- Используй маркированные списки (- пункт)"
+"- Делай переносы строк между пунктами"
+"- Используй ### для заголовков"
 - Отвечай кратко, дружелюбно и по делу
 - Если вопрос про долги — используй данные из "АКТИВНЫЕ ДОЛГИ"
 - Если вопрос про расходы — используй данные из "ПОСЛЕДНИЕ РАСХОДЫ"
@@ -332,6 +342,8 @@ def api_ask():
             "success": False,
             "error": str(e)
         }), 500
+    finally:
+        db.close()
 
 
 @app.route("/api/ai/categorize", methods=["POST"])
